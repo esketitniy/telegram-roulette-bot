@@ -1,293 +1,285 @@
-import os
+import asyncio
+import sqlite3
 import json
-import random
-import time
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Токен бота
-BOT_TOKEN = "7427699649:AAGBHat_h0miG5MX83OOn_UiA9A9kjky1YY"
+# Конфигурация
+BOT_TOKEN = "ВАШ_ТОКЕН_БОТА"
+WEB_APP_URL = "https://ваш-домен.com"  # URL вашего веб-приложения
 
-# Файл для сохранения данных пользователей
-USER_DATA_FILE = "users_data.json"
-
-# Рулетка: номера и цвета
-ROULETTE_NUMBERS = {
-    0: "🟢", 1: "🔴", 2: "⚫", 3: "🔴", 4: "⚫", 5: "🔴", 6: "⚫", 7: "🔴", 8: "⚫", 9: "🔴",
-    10: "⚫", 11: "🔴", 12: "⚫", 13: "🔴", 14: "⚫", 15: "🔴", 16: "⚫", 17: "🔴", 18: "⚫",
-    19: "🔴", 20: "⚫", 21: "🔴", 22: "⚫", 23: "🔴", 24: "⚫", 25: "🔴", 26: "⚫", 27: "🔴",
-    28: "⚫", 29: "🔴", 30: "⚫", 31: "🔴", 32: "⚫", 33: "🔴", 34: "⚫", 35: "🔴", 36: "⚫"
-}
-
-def load_user_data():
-    """Загрузка данных пользователей"""
-    try:
-        with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
-        return {}
-
-def save_user_data(data):
-    """Сохранение данных пользователей"""
-    with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-def get_user_balance(user_id):
-    """Получить баланс пользователя"""
-    users_data = load_user_data()
-    if str(user_id) not in users_data:
-        # Новый пользователь - стартовые 1000 звёзд
-        users_data[str(user_id)] = {
-            "balance": 1000,
-            "games_played": 0,
-            "total_won": 0,
-            "total_lost": 0
-        }
-        save_user_data(users_data)
-    return users_data[str(user_id)]
-
-def update_user_balance(user_id, amount, won=False):
-    """Обновить баланс пользователя"""
-    users_data = load_user_data()
-    user_data = users_data[str(user_id)]
+# Инициализация базы данных
+def init_db():
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
     
-    user_data["balance"] += amount
-    user_data["games_played"] += 1
+    # Таблица пользователей
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            balance INTEGER DEFAULT 1000,
+            total_games INTEGER DEFAULT 0,
+            total_won INTEGER DEFAULT 0,
+            total_lost INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
+    # Таблица игр
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS games (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            bet_type TEXT,
+            bet_amount INTEGER,
+            result_number INTEGER,
+            result_color TEXT,
+            won BOOLEAN,
+            winnings INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    ''')
+    
+    # Таблица транзакций
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            type TEXT,
+            amount INTEGER,
+            stars_amount INTEGER,
+            status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# Функции для работы с базой данных
+def get_user(user_id):
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+def create_user(user_id, username, first_name):
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR IGNORE INTO users (user_id, username, first_name)
+        VALUES (?, ?, ?)
+    ''', (user_id, username, first_name))
+    conn.commit()
+    conn.close()
+
+def update_balance(user_id, amount):
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE users SET balance = balance + ? WHERE user_id = ?
+    ''', (amount, user_id))
+    conn.commit()
+    conn.close()
+
+def save_game(user_id, bet_type, bet_amount, result_number, result_color, won, winnings):
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO games (user_id, bet_type, bet_amount, result_number, result_color, won, winnings)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, bet_type, bet_amount, result_number, result_color, won, winnings))
+    
+    # Обновляем статистику пользователя
     if won:
-        user_data["total_won"] += amount
+        cursor.execute('''
+            UPDATE users SET total_games = total_games + 1, total_won = total_won + ?
+            WHERE user_id = ?
+        ''', (winnings, user_id))
     else:
-        user_data["total_lost"] += abs(amount)
+        cursor.execute('''
+            UPDATE users SET total_games = total_games + 1, total_lost = total_lost + ?
+            WHERE user_id = ?
+        ''', (bet_amount, user_id))
     
-    save_user_data(users_data)
+    conn.commit()
+    conn.close()
 
-def start(update, context):
-    """Команда /start - главное меню"""
+# Команды бота
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_data = get_user_balance(user.id)
+    create_user(user.id, user.username, user.first_name)
+    user_data = get_user(user.id)
     
     keyboard = [
-        [InlineKeyboardButton("🎰 ИГРАТЬ В РУЛЕТКУ", callback_data="play_roulette")],
-        [InlineKeyboardButton("💰 Баланс", callback_data="balance"), 
-         InlineKeyboardButton("📊 Статистика", callback_data="stats")],
-        [InlineKeyboardButton("ℹ️ Правила", callback_data="rules")]
+        [InlineKeyboardButton("🎰 ИГРАТЬ В РУЛЕТКУ", web_app=WebAppInfo(url=f"{WEB_APP_URL}/game"))],
+        [InlineKeyboardButton("💰 Баланс", callback_data="balance")],
+        [InlineKeyboardButton("⭐ Купить звезды", callback_data="buy_stars")],
+        [InlineKeyboardButton("💸 Вывести звезды", callback_data="withdraw_stars")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="stats")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    welcome_text = f"""🎰 **ДОБРО ПОЖАЛОВАТЬ В ROULETTE CASINO!** 🎰
+    welcome_text = f"""🎰 ДОБРО ПОЖАЛОВАТЬ В PREMIUM CASINO! 🎰
 
-Привет, **{user.first_name}**! 👋
+Привет, {user.first_name}! 👋
 
-🔥 **ЕВРОПЕЙСКАЯ РУЛЕТКА** 🔥
-🎯 Ставки на цвета и числа
-⭐ Выигрывай Telegram Stars!
+🔥 ЕВРОПЕЙСКАЯ РУЛЕТКА 🔥
+💎 Играй за Telegram Stars
+⚡ Мгновенные выплаты
+🎯 Честные шансы
 
-💰 **Твой баланс:** {user_data['balance']} ⭐
+💰 Твой баланс: {user_data[3] if user_data else 1000} ⭐
 
-🎮 **Готов к игре? Жми "ИГРАТЬ"!** 🚀"""
+🚀 Нажми "ИГРАТЬ" для запуска!"""
     
-    update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode='Markdown')
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
-def play_roulette_menu(update, context):
-    """Меню выбора ставки"""
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    query.answer()
+    await query.answer()
     
-    user_data = get_user_balance(query.from_user.id)
-    balance = user_data['balance']
+    if query.data == "balance":
+        await show_balance(query)
+    elif query.data == "buy_stars":
+        await buy_stars(query)
+    elif query.data == "withdraw_stars":
+        await withdraw_stars(query)
+    elif query.data == "stats":
+        await show_stats(query)
+
+async def show_balance(query):
+    user_data = get_user(query.from_user.id)
     
-    if balance < 10:
-        query.edit_message_text(
-            "😔 **Недостаточно средств!**\n\n"
-            "Минимальная ставка: 10 ⭐\n"
-            f"Твой баланс: {balance} ⭐\n\n"
-            "Получи бонус командой /bonus",
-            parse_mode='Markdown'
-        )
-        return
+    text = f"""💰 ВАШ БАЛАНС 💰
+
+💎 Текущий баланс: {user_data[3]} ⭐
+🎮 Игр сыграно: {user_data[4]}
+🏆 Всего выиграно: {user_data[5]} ⭐
+📉 Всего проиграно: {user_data[6]} ⭐
+
+💡 Пополните баланс для продолжения игры!"""
     
     keyboard = [
-        [InlineKeyboardButton("🔴 КРАСНОЕ (×2)", callback_data="bet_red_50")],
-        [InlineKeyboardButton("⚫ ЧЁРНОЕ (×2)", callback_data="bet_black_50")],
-        [InlineKeyboardButton("🟢 ЗЕЛЁНОЕ (×35)", callback_data="bet_green_50")],
-        [InlineKeyboardButton("🎯 Выбрать ставку", callback_data="choose_bet")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")]
+        [InlineKeyboardButton("⭐ Купить звезды", callback_data="buy_stars")],
+        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    text = f"""🎰 **ЕВРОПЕЙСКАЯ РУЛЕТКА** 🎰
+    await query.edit_message_text(text, reply_markup=reply_markup)
 
-💰 **Твой баланс:** {balance} ⭐
+async def buy_stars(query):
+    text = """⭐ ПОКУПКА TELEGRAM STARS ⭐
 
-🎯 **СДЕЛАЙ СТАВКУ:**
+💎 Выберите пакет:
 
-🔴 **КРАСНОЕ** - коэффициент ×2
-⚫ **ЧЁРНОЕ** - коэффициент ×2  
-🟢 **ЗЕЛЁНОЕ (0)** - коэффициент ×35
+💰 100 Stars - 99₽
+💎 500 Stars - 449₽  
+🔥 1000 Stars - 799₽
+👑 2500 Stars - 1899₽
 
-💫 **Стандартная ставка: 50 ⭐**
-🎲 **Или выбери свою ставку!**"""
-    
-    query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
-
-def choose_bet_amount(update, context):
-    """Выбор размера ставки"""
-    query = update.callback_query
-    query.answer()
-    
-    user_data = get_user_balance(query.from_user.id)
-    balance = user_data['balance']
+После покупки звезды поступят на ваш игровой баланс!"""
     
     keyboard = [
-        [InlineKeyboardButton("10 ⭐", callback_data="amount_10"), 
-         InlineKeyboardButton("25 ⭐", callback_data="amount_25")],
-        [InlineKeyboardButton("50 ⭐", callback_data="amount_50"), 
-         InlineKeyboardButton("100 ⭐", callback_data="amount_100")],
-        [InlineKeyboardButton("250 ⭐", callback_data="amount_250"), 
-         InlineKeyboardButton("500 ⭐", callback_data="amount_500")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="play_roulette")]
+        [InlineKeyboardButton("💰 100 Stars - 99₽", callback_data="buy_100")],
+        [InlineKeyboardButton("💎 500 Stars - 449₽", callback_data="buy_500")],
+        [InlineKeyboardButton("🔥 1000 Stars - 799₽", callback_data="buy_1000")],
+        [InlineKeyboardButton("👑 2500 Stars - 1899₽", callback_data="buy_2500")],
+        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    text = f"""💰 **ВЫБЕРИ РАЗМЕР СТАВКИ**
+    await query.edit_message_text(text, reply_markup=reply_markup)
 
-Твой баланс: **{balance} ⭐**
+async def withdraw_stars(query):
+    user_data = get_user(query.from_user.id)
+    balance = user_data[3]
+    
+    if balance < 100:
+        text = f"""💸 ВЫВОД ЗВЕЗД 💸
 
-Выбери сумму для ставки:"""
-    
-    query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+❌ Недостаточно средств для вывода!
 
-def select_color_for_bet(update, context):
-    """Выбор цвета для ставки определённого размера"""
-    query = update.callback_query
-    query.answer()
-    
-    # Извлекаем размер ставки из callback_data
-    bet_amount = int(query.data.split('_')[1])
-    
-    user_data = get_user_balance(query.from_user.id)
-    balance = user_data['balance']
-    
-    if balance < bet_amount:
-        query.edit_message_text(
-            f"😔 **Недостаточно средств!**\n\n"
-            f"Нужно: {bet_amount} ⭐\n"
-            f"У тебя: {balance} ⭐",
-            parse_mode='Markdown'
-        )
-        return
-    
-    keyboard = [
-        [InlineKeyboardButton(f"🔴 КРАСНОЕ (×2) - {bet_amount} ⭐", callback_data=f"bet_red_{bet_amount}")],
-        [InlineKeyboardButton(f"⚫ ЧЁРНОЕ (×2) - {bet_amount} ⭐", callback_data=f"bet_black_{bet_amount}")],
-        [InlineKeyboardButton(f"🟢 ЗЕЛЁНОЕ (×35) - {bet_amount} ⭐", callback_data=f"bet_green_{bet_amount}")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="choose_bet")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    text = f"""🎯 **СТАВКА: {bet_amount} ⭐**
+Минимальная сумма вывода: 100 ⭐
+Ваш баланс: {balance} ⭐
 
-Выбери цвет для ставки:
-
-🔴 **КРАСНОЕ** - выигрыш {bet_amount * 2} ⭐
-⚫ **ЧЁРНОЕ** - выигрыш {bet_amount * 2} ⭐
-🟢 **ЗЕЛЁНОЕ** - выигрыш {bet_amount * 35} ⭐"""
-    
-    query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
-
-def spin_roulette(update, context):
-    """Запуск рулетки"""
-    query = update.callback_query
-    query.answer()
-    
-    # Парсим данные ставки
-    bet_data = query.data.split('_')
-    bet_color = bet_data[1]  # red, black, green
-    bet_amount = int(bet_data[2])
-    
-    user_id = query.from_user.id
-    user_data = get_user_balance(user_id)
-    
-    if user_data['balance'] < bet_amount:
-        query.edit_message_text("😔 Недостаточно средств!")
-        return
-    
-    # Анимация вращения
-    animation_text = f"""🎰 **РУЛЕТКА ВРАЩАЕТСЯ...** 🎰
-
-Твоя ставка: **{bet_amount} ⭐** на {'🔴 КРАСНОЕ' if bet_color == 'red' else '⚫ ЧЁРНОЕ' if bet_color == 'black' else '🟢 ЗЕЛЁНОЕ'}
-
-🔄 ⚡ 🎯 ⚡ 🔄"""
-    
-    query.edit_message_text(animation_text, parse_mode='Markdown')
-    
-    # Имитация вращения (задержка)
-    time.sleep(2)
-    
-    # Генерируем результат
-    result_number = random.randint(0, 36)
-    result_color = ROULETTE_NUMBERS[result_number]
-    
-    # Определяем цвет словом
-    if result_color == "🔴":
-        color_name = "КРАСНОЕ"
-        color_code = "red"
-    elif result_color == "⚫":
-        color_name = "ЧЁРНОЕ"  
-        color_code = "black"
+Играйте больше чтобы накопить нужную сумму!"""
     else:
-        color_name = "ЗЕЛЁНОЕ"
-        color_code = "green"
-    
-    # Проверяем выигрыш
-    won = False
-    winnings = 0
-    
-    if bet_color == color_code:
-        won = True
-        if color_code == "green":
-            winnings = bet_amount * 35
-        else:
-            winnings = bet_amount * 2
-    
-    # Обновляем баланс
-    if won:
-        update_user_balance(user_id, winnings - bet_amount, won=True)
-        new_balance = user_data['balance'] + winnings - bet_amount
-    else:
-        update_user_balance(user_id, -bet_amount, won=False)
-        new_balance = user_data['balance'] - bet_amount
-    
-    # Результат
-    if won:
-        result_text = f"""🎉 **ПОЗДРАВЛЯЕМ! ТЫ ВЫИГРАЛ!** 🎉
+        text = f"""💸 ВЫВОД ЗВЕЗД 💸
 
-🎰 **Результат:** {result_number} {result_color} {color_name}
+💰 Доступно к выводу: {balance} ⭐
+💎 Минимальный вывод: 100 ⭐
+⚡ Комиссия: 5%
 
-💰 **Твоя ставка:** {bet_amount} ⭐
-🏆 **Выигрыш:** {winnings} ⭐
-💵 **Прибыль:** +{winnings - bet_amount} ⭐
-
-💰 **Новый баланс:** {new_balance} ⭐
-
-🎊 **ОТЛИЧНАЯ ИГРА!** 🎊"""
-    else:
-        result_text = f"""😔 **К сожалению, проигрыш...** 😔
-
-🎰 **Результат:** {result_number} {result_color} {color_name}
-
-💰 **Твоя ставка:** {bet_amount} ⭐
-📉 **Потеря:** -{bet_amount} ⭐
-
-💰 **Новый баланс:** {new_balance} ⭐
-
-🍀 **Удача в следующий раз!** 🍀"""
+Звезды поступят на ваш Telegram баланс в течение 5 минут."""
     
     keyboard = [
-        [InlineKeyboardButton("🎰 ИГРАТЬ ЕЩЁ", callback_data="play_roulette")],
-        [InlineKeyboardButton("📊 Статистика", callback_data="stats"),
-         InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+        [InlineKeyboardButton("💸 Вывести 100 ⭐", callback_data="withdraw_100")],
+        [InlineKeyboardButton("💎 Вывести 500 ⭐", callback_data="withdraw_500")],
+        [InlineKeyboardButton("🔥 Вывести всё", callback_data="withdraw_all")],
+        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    query.edit_message_text(result_text, reply_markup=reply_markup, parse_mode='Markdown
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+async def show_stats(query):
+    user_data = get_user(query.from_user.id)
+    
+    # Получаем историю последних игр
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT bet_type, bet_amount, result_number, won, winnings, created_at
+        FROM games 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC 
+        LIMIT 10
+    ''', (query.from_user.id,))
+    recent_games = cursor.fetchall()
+    conn.close()
+    
+    win_rate = 0
+    if user_data[4] > 0:  # total_games
+        wins = len([g for g in recent_games if g[3]])  # won
+        win_rate = (wins / min(len(recent_games), user_data[4])) * 100
+    
+    text = f"""📊 ВАША СТАТИСТИКА 📊
+
+🎮 Всего игр: {user_data[4]}
+🏆 Всего выиграно: {user_data[5]} ⭐
+📉 Всего проиграно: {user_data[6]} ⭐
+📈 Процент побед: {win_rate:.1f}%
+
+🎯 ПОСЛЕДНИЕ ИГРЫ:"""
+    
+    for game in recent_games[:5]:
+        bet_type, bet_amount, result_number, won, winnings, created_at = game
+        status = "✅ Выигрыш" if won else "❌ Проигрыш"
+        text += f"\n{status}: {bet_type} {bet_amount}⭐ → {result_number}"
+    
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+def main():
+    init_db()
+    
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
+    
+    print("🎰 Casino Bot запущен!")
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
