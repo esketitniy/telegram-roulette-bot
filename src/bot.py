@@ -1,11 +1,19 @@
+import logging
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
-# Токен напрямую (чтобы точно работал)
-BOT_TOKEN = "7427699649:AAGBHat_h0miG5MX83OOn_UiA9A9kjky1YY"
+# Получаем токен из переменных окружения
+BOT_TOKEN = os.getenv('BOT_TOKEN', 'YOUR_BOT_TOKEN')
 
-def start(update, context):
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+def start(update: Update, context: CallbackContext):
     """Команда /start - главное меню бота"""
     user = update.effective_user
     
@@ -21,13 +29,23 @@ def start(update, context):
 
 Привет, {user.first_name}! 👋
 
-Это казино-рулетка на Telegram Stars ⭐
+Это казино-рулетка где ты можешь играть на Telegram Stars ⭐
 
-🎮 Нажми на кнопки ниже:"""
+🎮 **Как играть:**
+• Нажми "🎰 Рулетка" чтобы начать игру
+• Делай ставки на числа, цвета или секторы  
+• Выигрывай Stars и увеличивай свой баланс!
+
+💫 **Коэффициенты выплат:**
+• Число (0-36): ×35
+• Цвет (красный/чёрный): ×2  
+• Чётность: ×2
+
+Удачи! 🍀"""
     
-    update.message.reply_text(welcome_text, reply_markup=reply_markup)
+    update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode='Markdown')
 
-def button_handler(update, context):
+def button_handler(update: Update, context: CallbackContext):
     """Обработчик нажатий на кнопки"""
     query = update.callback_query
     query.answer()
@@ -41,9 +59,14 @@ def button_handler(update, context):
 
 def main():
     """Главная функция - запуск бота"""
-    print("🤖 Запуск Telegram Roulette Bot...")
+    # Проверяем наличие токена
+    if BOT_TOKEN == 'YOUR_BOT_TOKEN':
+        logger.error("❌ Установите BOT_TOKEN в переменных окружения!")
+        return
     
-    # Создаём updater  
+    logger.info("🤖 Запуск Telegram Roulette Bot...")
+    
+    # Создаём updater
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
     
@@ -52,7 +75,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(button_handler))
     
     # Запускаем бота
-    print("✅ Бот успешно запущен!")
+    logger.info("✅ Бот успешно запущен!")
     updater.start_polling()
     updater.idle()
 
