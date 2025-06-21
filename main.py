@@ -292,3 +292,210 @@ def game():
                         : `😔 You lost! ${colorEmoji} ${resultNumber}<br>Loss: ${betAmount}⭐`;
                     
                     document.getElementById('game-result').
+document.getElementById('game-result').innerHTML = `<p>${resultText}</p>`;
+                    
+                    wheel.classList.remove('spinning');
+                    isSpinning = false;
+                }, 3000);
+            }
+            
+            function getNumberColor(number) {
+                if (number === 0) return 'green';
+                const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+                return redNumbers.includes(number) ? 'red' : 'black';
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/api/spin', methods=['POST'])
+def spin_api():
+    try:
+        data = request.json
+        user_id = data.get('user_id', 0)
+        bet_type = data.get('bet_type')
+        bet_amount = data.get('bet_amount')
+        
+        # Generate result
+        result_number = random.randint(0, 36)
+        result_color = 'green' if result_number == 0 else ROULETTE_NUMBERS[result_number]
+        
+        # Calculate winnings
+        won = bet_type == result_color
+        winnings = 0
+        
+        if won:
+            if result_color == 'green':
+                winnings = bet_amount * 36
+            else:
+                winnings = bet_amount * 2
+        
+        # Save game (if user exists)
+        if user_id:
+            save_game(user_id, bet_type, bet_amount, result_number, result_color, won, winnings)
+            if won:
+                update_balance(user_id, winnings - bet_amount)
+            else:
+                update_balance(user_id, -bet_amount)
+        
+        return jsonify({
+            'result_number': result_number,
+            'result_color': result_color,
+            'won': won,
+            'winnings': winnings
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Telegram Bot Commands
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    create_user(user.id, user.username, user.first_name)
+    user_data = get_user(user.id)
+    
+    keyboard = [
+        [InlineKeyboardButton("🎰 ИГРАТЬ В РУЛЕТКУ", web_app=WebAppInfo(url=f"{WEB_APP_URL}/game"))],
+        [InlineKeyboardButton("💰 Баланс", callback_data="balance")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="stats")],
+        [InlineKeyboardButton("ℹ️ Правила", callback_data="rules")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    welcome_text = f"""🎰 ДОБРО ПОЖАЛОВАТЬ В PREMIUM CASINO! 🎰
+
+Привет, {user.first_name}! 👋
+
+🔥 ЕВРОПЕЙСКАЯ РУЛЕТКА 🔥
+💎 Играй за Telegram Stars
+⚡ Мгновенные выплаты
+🎯 Честные шансы
+
+💰 Твой баланс: {user_data[3] if user_data else 1000} ⭐
+
+🚀 Нажми "ИГРАТЬ" для запуска!"""
+    
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "balance":
+        await show_balance(query)
+    elif query.data == "stats":
+        await show_stats(query)
+    elif query.data == "rules":
+        await show_rules(query)
+    elif query.data == "back":
+        await back_to_menu(query)
+
+async def show_balance(query):
+    user_data = get_user(query.from_user.id)
+    
+    text = f"""💰 ВАШ БАЛАНС 💰
+
+💎 Текущий баланс: {user_data[3]} ⭐
+🎮 Игр сыграно: {user_data[4]}
+🏆 Всего выиграно: {user_data[5]} ⭐
+📉 Всего проиграно: {user_data[6]} ⭐
+
+💡 Играйте ответственно!"""
+    
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+async def show_stats(query):
+    user_data = get_user(query.from_user.id)
+    
+    profit_loss = user_data[5] - user_data[6]  # total_won - total_lost
+    profit_emoji = "📈" if profit_loss >= 0 else "📉"
+    
+    text = f"""📊 ВАША СТАТИСТИКА 📊
+
+🎮 Всего игр: {user_data[4]}
+🏆 Всего выиграно: {user_data[5]} ⭐
+📉 Всего проиграно: {user_data[6]} ⭐
+{profit_emoji} Общий результат: {profit_loss:+d} ⭐
+💰 Текущий баланс: {user_data[3]} ⭐
+
+🎯 Удачи в следующих играх! 🍀"""
+    
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+async def show_rules(query):
+    text = """ℹ️ ПРАВИЛА ЕВРОПЕЙСКОЙ РУЛЕТКИ ℹ️
+
+🎯 ЧИСЛА: от 0 до 36
+
+🔴 КРАСНЫЕ: 1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36
+⚫ ЧЁРНЫЕ: 2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35
+🟢 ЗЕЛЁНОЕ: только 0
+
+💰 КОЭФФИЦИЕНТЫ:
+🔴⚫ Красное/Чёрное: ×2 (48.65% шанс)
+🟢 Зелёное (0): ×36 (2.70% шанс)
+
+🎮 Минимальная ставка: 10 ⭐
+💎 Максимальная ставка: 1000 ⭐
+
+🍀 Удачи в игре!"""
+    
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+async def back_to_menu(query):
+    user_data = get_user(query.from_user.id)
+    
+    keyboard = [
+        [InlineKeyboardButton("🎰 ИГРАТЬ В РУЛЕТКУ", web_app=WebAppInfo(url=f"{WEB_APP_URL}/game"))],
+        [InlineKeyboardButton("💰 Баланс", callback_data="balance")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="stats")],
+        [InlineKeyboardButton("ℹ️ Правила", callback_data="rules")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    text = f"""🎰 PREMIUM CASINO 🎰
+
+💰 Ваш баланс: {user_data[3]} ⭐
+
+🎮 Выберите действие:"""
+    
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+# Bot setup
+def run_bot():
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(handle_callback))
+    
+    print("🤖 Telegram Bot запущен!")
+    application.run_polling()
+
+def run_flask():
+    app.run(host='0.0.0.0', port=5000, debug=False)
+
+def main():
+    init_db()
+    
+    # Запускаем Flask в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+    
+    print("🌐 Flask сервер запущен на порту 5000")
+    
+    # Запускаем бота
+    run_bot()
+
+if __name__ == '__main__':
+    main()
