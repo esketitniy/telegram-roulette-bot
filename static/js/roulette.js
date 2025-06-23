@@ -199,3 +199,125 @@ function getColorEmoji(color) {
 // Показ результата в интерфейсе
 function showResult(message, type = '') {
     const resultElement = document.getElementById('game-result');
+if (resultElement) {
+        resultElement.innerHTML = `<p>${message.replace('\n', '<br>')}</p>`;
+        
+        // Добавляем класс для стилизации
+        resultElement.className = `result ${type}`;
+        
+        // Анимация появления
+        resultElement.style.transform = 'scale(0.8)';
+        resultElement.style.opacity = '0.5';
+        setTimeout(() => {
+            resultElement.style.transform = 'scale(1)';
+            resultElement.style.opacity = '1';
+        }, 100);
+    }
+}
+
+// Локальная генерация результата (fallback)
+function generateLocalResult(betColor, betAmount) {
+    const resultNumber = Math.floor(Math.random() * 37); // 0-36
+    const resultColor = getNumberColor(resultNumber);
+    const won = betColor === resultColor;
+    
+    let winnings = 0;
+    if (won) {
+        winnings = resultColor === 'green' ? betAmount * 36 : betAmount * 2;
+    }
+    
+    return {
+        success: true,
+        result_number: resultNumber,
+        result_color: resultColor,
+        won: won,
+        winnings: winnings
+    };
+}
+
+// Определение цвета числа
+function getNumberColor(number) {
+    if (number === 0) return 'green';
+    const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+    return redNumbers.includes(number) ? 'red' : 'black';
+}
+
+// Блокировка кнопок
+function disableAllButtons() {
+    const buttons = document.querySelectorAll('.bet-btn');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    });
+}
+
+// Разблокировка кнопок
+function enableAllButtons() {
+    const buttons = document.querySelectorAll('.bet-btn');
+    buttons.forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    });
+}
+
+// Празднование выигрыша
+function celebrateWin() {
+    // Конфетти эффект (простой)
+    const result = document.getElementById('game-result');
+    if (result) {
+        result.classList.add('win-animation');
+        setTimeout(() => {
+            result.classList.remove('win-animation');
+        }, 1500);
+    }
+    
+    // Telegram confetti
+    if (tg && tg.showPopup) {
+        tg.showPopup({
+            title: '🎉 Поздравляем!',
+            message: 'Вы выиграли!',
+            buttons: [{type: 'ok'}]
+        });
+    }
+}
+
+// Вибрация телефона
+function vibratePhone() {
+    if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+    }
+    
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+// Звук вращения (заглушка)
+function playSpinSound() {
+    // Здесь можно добавить Web Audio API для звуков
+    console.log('🔊 Звук вращения рулетки');
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎰 Страница игры загружена');
+    
+    // Загружаем баланс пользователя
+    if (userId) {
+        loadUserBalance();
+    }
+    
+    // Настройка Telegram WebApp
+    if (tg) {
+        tg.ready();
+        tg.expand();
+        
+        // Скрываем кнопку "Назад"
+        tg.BackButton.hide();
+        
+        // Настройка темы
+        document.body.style.backgroundColor = tg.themeParams.bg_color || '#1e3c72';
+    }
+});
+
+console.log('✅ Roulette JS инициализирован');
