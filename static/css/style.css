@@ -1,0 +1,198 @@
+/* Telegram Casino CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* Рулетка */
+.roulette-wheel {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    margin: 20px auto;
+    position: relative;
+    background: conic-gradient(
+        #ff0000 0deg 9.73deg, #000000 9.73deg 19.46deg,
+        #ff0000 19.46deg 29.19deg, #000000 29.19deg 38.92deg,
+        #ff0000 38.92deg 48.65deg, #000000 48.65deg 58.38deg,
+        #ff0000 58.38deg 68.11deg, #000000 68.11deg 77.84deg,
+        #ff0000 77.84deg 87.57deg, #000000 87.57deg 97.30deg,
+        #00ff00 97.30deg 107.03deg,
+        #000000 107.03deg 116.76deg, #ff0000 116.76deg 126.49deg,
+        #000000 126.49deg 136.22deg, #ff0000 136.22deg 145.95deg,
+        #000000 145.95deg 155.68deg, #ff0000 155.68deg 165.41deg,
+        #000000 165.41deg 175.14deg, #ff0000 175.14deg 184.87deg,
+        #000000 184.87deg 194.60deg, #ff0000 194.60deg 204.33deg,
+        #000000 204.33deg 214.06deg, #ff0000 214.06deg 223.79deg,
+        #000000 223.79deg 233.52deg, #ff0000 233.52deg 243.25deg,
+        #000000 243.25deg 252.98deg, #ff0000 252.98deg 262.71deg,
+        #000000 262.71deg 272.44deg, #ff0000 272.44deg 282.17deg,
+        #000000 282.17deg 291.90deg, #ff0000 291.90deg 301.63deg,
+        #000000 301.63deg 311.36deg, #ff0000 311.36deg 321.09deg,
+        #000000 321.09deg 330.82deg, #ff0000 330.82deg 340.55deg,
+        #000000 340.55deg 350.28deg, #ff0000 350.28deg 360deg
+    );
+    border: 5px solid gold;
+    transition: transform 0.5s ease;
+}
+
+.wheel-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: gold;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: black;
+    font-size: 16px;
+}
+
+/* Кнопки ставок */
+.bet-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 20px 0;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.bet-btn {
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.bet-btn:active {
+    transform: scale(0.95);
+}
+
+.bet-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bet-red {
+    background: linear-gradient(45deg, #ff4444, #cc0000);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+}
+
+.bet-black {
+    background: linear-gradient(45deg, #333333, #000000);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.bet-green {
+    background: linear-gradient(45deg, #00aa00, #006600);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 170, 0, 0.3);
+}
+
+/* Баланс и результаты */
+.balance, .result {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.balance h3 {
+    margin: 0;
+    color: #FFD700;
+}
+
+.result {
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Анимации */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(1800deg); }
+}
+
+.spinning {
+    animation: spin 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.win-animation {
+    animation: pulse 0.5s ease-in-out 3;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .roulette-wheel {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .wheel-center {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+    
+    .bet-btn {
+        padding: 12px;
+        font-size: 12px;
+    }
+}
+
+/* Дополнительные стили */
+h1 {
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.logo {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    opacity: 0.8;
+    margin-bottom: 20px;
+  }
