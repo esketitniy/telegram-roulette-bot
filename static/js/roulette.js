@@ -239,85 +239,79 @@ function generateLocalResult(betColor, betAmount) {
 function getNumberColor(number) {
     if (number === 0) return 'green';
     const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-    return redNumbers.includes(number) ? 'red' : 'black';
-}
+                return redNumbers.includes(number) ? 'red' : 'black';
+            }
 
-// Блокировка кнопок
-function disableAllButtons() {
-    const buttons = document.querySelectorAll('.bet-btn');
-    buttons.forEach(btn => {
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-    });
-}
+            // Блокировка кнопок
+            function disableAllButtons() {
+                const buttons = document.querySelectorAll('.bet-btn');
+                buttons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                });
+            }
 
-// Разблокировка кнопок
-function enableAllButtons() {
-    const buttons = document.querySelectorAll('.bet-btn');
-    buttons.forEach(btn => {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-    });
-}
+            // Разблокировка кнопок
+            function enableAllButtons() {
+                const buttons = document.querySelectorAll('.bet-btn');
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                });
+            }
 
-// Празднование выигрыша
-function celebrateWin() {
-    // Конфетти эффект (простой)
-    const result = document.getElementById('game-result');
-    if (result) {
-        result.classList.add('win-animation');
-        setTimeout(() => {
-            result.classList.remove('win-animation');
-        }, 1500);
-    }
-    
-    // Telegram confetti
-    if (tg && tg.showPopup) {
-        tg.showPopup({
-            title: '🎉 Поздравляем!',
-            message: 'Вы выиграли!',
-            buttons: [{type: 'ok'}]
-        });
-    }
-}
+            // Празднование выигрыша
+            function celebrateWin() {
+                const result = document.getElementById('game-result');
+                if (result) {
+                    result.classList.add('win-animation');
+                    setTimeout(() => {
+                        result.classList.remove('win-animation');
+                    }, 1500);
+                }
+                
+                if (tg && tg.showPopup) {
+                    tg.showPopup({
+                        title: '🎉 Поздравляем!',
+                        message: 'Вы выиграли!',
+                        buttons: [{type: 'ok'}]
+                    });
+                }
+            }
 
-// Вибрация телефона
-function vibratePhone() {
-    if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-    }
-    
-    if (tg && tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
-    }
-}
+            // Вибрация телефона
+            function vibratePhone() {
+                if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100]);
+                }
+                
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            }
 
-// Звук вращения (заглушка)
-function playSpinSound() {
-    // Здесь можно добавить Web Audio API для звуков
-    console.log('🔊 Звук вращения рулетки');
-}
+            // Инициализация при загрузке
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('🎰 Страница игры загружена');
+                
+                if (userId) {
+                    loadUserBalance();
+                }
+                
+                if (tg) {
+                    tg.ready();
+                    tg.expand();
+                    tg.BackButton.hide();
+                    
+                    // Настройка темы
+                    if (tg.themeParams.bg_color) {
+                        document.body.style.backgroundColor = tg.themeParams.bg_color;
+                    }
+                }
+            });
 
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎰 Страница игры загружена');
-    
-    // Загружаем баланс пользователя
-    if (userId) {
-        loadUserBalance();
-    }
-    
-    // Настройка Telegram WebApp
-    if (tg) {
-        tg.ready();
-        tg.expand();
-        
-        // Скрываем кнопку "Назад"
-        tg.BackButton.hide();
-        
-        // Настройка темы
-        document.body.style.backgroundColor = tg.themeParams.bg_color || '#1e3c72';
-    }
-});
-
-console.log('✅ Roulette JS инициализирован');
+            console.log('✅ Casino JS загружен');
+        </script>
+    </body>
+    </html>
+    '''
