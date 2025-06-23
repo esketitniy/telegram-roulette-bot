@@ -106,7 +106,7 @@ def save_game(user_id, bet_type, bet_amount, result_number, result_color, won, w
 
 # Flask routes
 @app.route('/')
-def index():
+def game():
     return '''
     <!DOCTYPE html>
     <html>
