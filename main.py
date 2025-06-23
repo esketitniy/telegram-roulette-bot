@@ -499,3 +499,24 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # Запуск бота в отдельном потоке
+def start_bot():
+    if BOT_TOKEN:
+        bot_thread = threading.Thread(target=run_bot)
+        bot_thread.daemon = True
+        bot_thread.start()
+        print("🤖 Telegram Bot запущен в отдельном потоке")
+
+# Обновляем функцию main
+def main():
+    init_db()
+    
+    # Запускаем бота
+    start_bot()
+    
+    # Запускаем Flask
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
+
+if __name__ == '__main__':
+    main()
