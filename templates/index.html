@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎰 Telegram Casino</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 400px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .logo {
+            font-size: 4em;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .features {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+        
+        .features li {
+            padding: 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .cta-button {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎰</div>
+        <h1>CASINO</h1>
+        <p class="subtitle">Премиум казино в Telegram</p>
+        
+        <ul class="features">
+            <li>🔥 Европейская рулетка</li>
+            <li>💎 Виртуальные звезды</li>
+            <li>⚡ Мгновенные результаты</li>
+            <li>🎯 Честная игра</li>
+        </ul>
+        
+        <a href="/game" class="cta-button">
+            🎮 ИГРАТЬ СЕЙЧАС
+        </a>
+        
+        <div class="status">
+            ✅ Сервер работает
+        </div>
+    </div>
+    
+    <script>
+        // Telegram WebApp initialization
+        if (window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+        }
+    </script>
+</body>
+</html>
