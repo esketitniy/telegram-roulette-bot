@@ -48,7 +48,7 @@ def index():
     <a href="/game">Play Game</a>
     '''
     
-    @app.route('/game')
+@app.route('/game')
 def game():
     return """<!DOCTYPE html>
 <html lang="ru">
