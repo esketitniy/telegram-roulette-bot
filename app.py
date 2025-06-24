@@ -2,14 +2,12 @@ import os
 import sqlite3
 import threading
 import time
-import asyncio
 from datetime import datetime
 from flask import Flask, render_template_string, request, jsonify
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import random
 import json
-from flask_socketio import SocketIO, emit, join_room, leave_room
 
 # Настройки
 BOT_TOKEN = os.getenv('BOT_TOKEN', 'YOUR_BOT_TOKEN')
@@ -18,7 +16,6 @@ APP_URL = os.getenv('APP_URL', 'https://your-app.onrender.com')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'casino_secret_key_2024'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Глобальные переменные для ОНЛАЙН игры
 online_players = {}
@@ -35,6 +32,7 @@ game_state = {
 def init_db():
     conn = sqlite3.connect('casino_online.db')
     cursor = conn.cursor()
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
@@ -47,6 +45,7 @@ def init_db():
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_history (
             id INTEGER PRIMARY KEY,
@@ -57,6 +56,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_bets (
             id INTEGER PRIMARY KEY,
@@ -70,6 +70,7 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
+    
     conn.commit()
     conn.close()
 
@@ -116,7 +117,6 @@ def get_user_stats(telegram_id):
     conn = sqlite3.connect('casino_online.db')
     cursor = conn.cursor()
     
-    # Получаем статистику пользователя
     cursor.execute('''
         SELECT 
             COUNT(*) as total_games,
@@ -138,21 +138,91 @@ def get_user_stats(telegram_id):
         'total_bet': stats[3] or 0
     }
 
+def get_color_emoji(color):
+    return {'red': '🔴', 'black': '⚫', 'green': '🟢'}.get(color, '🎰')
+
 # Flask маршруты
 @app.route('/')
 def index():
-    return '''
-    <h1>🎰 Online Casino</h1>
-    <p>Real-time multiplayer casino is running!</p>
-    <p>👥 Active players: <span id="player-count">0</span></p>
-    <a href="/game">Join Game</a>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script>
-        const socket = io();
-        socket.on('player_count', (count) => {
-            document.getElementById('player-count').textContent = count;
-        });
-    </script>
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>🎰 Online Casino</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{ 
+                font-family: Arial, sans-serif; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; padding: 20px; text-align: center;
+                min-height: 100vh; margin: 0;
+            }}
+            .container {{ max-width: 600px; margin: 0 auto; }}
+            .status {{ 
+                background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; 
+                margin: 20px 0; backdrop-filter: blur(10px);
+            }}
+            .button {{ 
+                display: inline-block; background: linear-gradient(45deg, #FFD700, #FFA500);
+                color: black; padding: 15px 30px; text-decoration: none; border-radius: 10px;
+                font-weight: bold; margin: 10px; transition: transform 0.3s;
+            }}
+            .button:hover {{ transform: translateY(-2px); }}
+            .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }}
+            .stat-item {{ background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎰 ONLINE CASINO</h1>
+            <p>Real-time multiplayer European Roulette</p>
+            
+            <div class="status">
+                <h3>📊 Live Status</h3>
+                <div class="stats">
+                    <div class="stat-item">
+                        <strong>👥 Players</strong><br>
+                        <span id="player-count">{len(online_players)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <strong>⏰ Next Spin</strong><br>
+                        <span id="countdown">{game_state['countdown']}</span>s
+                    </div>
+                    <div class="stat-item">
+                        <strong>🎲 Last Result</strong><br>
+                        {get_color_emoji(game_state['last_result']['color'])} {game_state['last_result']['number']}
+                    </div>
+                    <div class="stat-item">
+                        <strong>📊 Round</strong><br>
+                        #{game_state['round_id']}
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <a href="/game" class="button">🎮 Play Casino</a>
+                <a href="/api/status" class="button">📊 API Status</a>
+            </div>
+            
+            <div style="margin-top: 30px; opacity: 0.8;">
+                <p>✨ Features: Real-time multiplayer • Persistent balance • Auto-sync</p>
+            </div>
+        </div>
+        
+        <script>
+            setInterval(async () => {{
+                try {{
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    document.getElementById('player-count').textContent = data.players_online;
+                    document.getElementById('countdown').textContent = data.game_state.countdown;
+                }} catch (e) {{
+                    console.log('Status update failed:', e);
+                }}
+            }}, 5000);
+        </script>
+    </body>
+    </html>
     '''
 
 @app.route('/game')
@@ -164,7 +234,6 @@ def game():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎰 Online European Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -174,7 +243,13 @@ def game():
         }
         .container { max-width: 420px; margin: 0 auto; }
         
-        /* Регистрация */
+        .connection-status { 
+            position: fixed; top: 10px; right: 10px; padding: 8px 15px; 
+            border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 100;
+        }
+        .status-connected { background: #00aa00; color: white; }
+        .status-disconnected { background: #ff4444; color: white; }
+        
         .registration-modal { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;
@@ -204,10 +279,12 @@ def game():
             background: linear-gradient(45deg, #FFD700, #FFA500);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
+        
         .player-info { 
             background: rgba(255, 215, 0, 0.1); padding: 10px; border-radius: 15px; 
             margin-bottom: 15px; text-align: center; border: 2px solid rgba(255, 215, 0, 0.3);
         }
+        
         .stats-row { 
             display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;
         }
@@ -217,6 +294,7 @@ def game():
         }
         .stat-box h3 { font-size: 12px; margin-bottom: 5px; opacity: 0.8; }
         .stat-value { font-size: 16px; font-weight: bold; color: #FFD700; }
+        
         .countdown-box { 
             background: linear-gradient(45deg, rgba(255, 69, 0, 0.3), rgba(255, 140, 0, 0.3));
             border: 2px solid rgba(255, 69, 0, 0.5);
@@ -236,15 +314,14 @@ def game():
                 #ff0000 29.19deg 38.92deg, #000000 38.92deg 48.65deg, #ff0000 48.65deg 58.38deg,
                 #000000 58.38deg 68.11deg, #ff0000 68.11deg 77.84deg, #000000 77.84deg 87.57deg,
                 #ff0000 87.57deg 97.30deg, #000000 97.30deg 107.03deg, #ff0000 107.03deg 116.76deg,
-                #000000 116.76deg 126.49deg, #ff0000 126.49deg 136.22deg, #000000 136.22deg 145.95deg,
-                #ff0000 145.95deg 155.68deg, #000000 155.68deg 165.41deg, #ff0000 165.41deg 175.14deg,
-                #000000 175.14deg 184.87deg, #ff0000 184.87deg 194.60deg, #000000 194.60deg 204.33deg,
-                #ff0000 204.33deg 214.06deg, #000000 214.06deg 223.79deg, #ff0000 223.79deg 233.52deg,
-                #000000 233.52deg 243.25deg, #ff0000 243.25deg 252.98deg, #000000 252.98deg 262.71deg,
-                #ff0000 262.71deg 272.44deg, #000000 272.44deg 282.17deg, #ff0000 282.17deg 291.90deg,
-                #000000 291.90deg 301.63deg, #ff0000 301.63deg 311.36deg, #000000 311.36deg 321.09deg,
-                #ff0000 321.09deg 330.82deg, #000000 330.82deg 340.55deg, #ff0000 340.55deg 350.28deg,
-                #000000 350.28deg 360deg
+                #000000 116.76deg 126.49deg, #ff0000 126.49deg 136.22deg, #000000 136.22deg 145.95deg, #ff0000 145.95deg 155.68deg, #000000 155.68deg 165.41deg,
+                #ff0000 165.41deg 175.14deg, #000000 175.14deg 184.87deg, #ff0000 184.87deg 194.60deg,
+                #000000 194.60deg 204.33deg, #ff0000 204.33deg 214.06deg, #000000 214.06deg 223.79deg,
+                #ff0000 223.79deg 233.52deg, #000000 233.52deg 243.25deg, #ff0000 243.25deg 252.98deg,
+                #000000 252.98deg 262.71deg, #ff0000 262.71deg 272.44deg, #000000 272.44deg 282.17deg,
+                #ff0000 282.17deg 291.90deg, #000000 291.90deg 301.63deg, #ff0000 301.63deg 311.36deg,
+                #000000 311.36deg 321.09deg, #ff0000 321.09deg 330.82deg, #000000 330.82deg 340.55deg,
+                #ff0000 340.55deg 350.28deg, #000000 350.28deg 360deg
             );
             border: 6px solid #FFD700; 
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), inset 0 0 20px rgba(0,0,0,0.3);
@@ -309,8 +386,8 @@ def game():
         .player-chip { 
             padding: 5px 10px; background: rgba(255, 255, 255, 0.2); 
             border-radius: 15px; font-size: 12px; border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #00ff00;
         }
-        .player-chip.online { border-color: #00ff00; color: #00ff00; }
         
         .live-bets { 
             background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 15px; 
@@ -364,16 +441,8 @@ def game():
         .history-black { background: #333333; color: white; }
         .history-green { background: #00aa00; color: white; }
         
-        .connection-status { 
-            position: fixed; top: 10px; right: 10px; padding: 8px 15px; 
-            border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 100;
-        }
-        .status-connected { background: #00aa00; color: white; }
-        .status-disconnected { background: #ff4444; color: white; }
-        
         .footer { text-align: center; margin-top: 30px; opacity: 0.7; font-size: 12px; }
         
-        /* Мобильная адаптация */
         @media (max-width: 480px) {
             .stats-row { grid-template-columns: 1fr 1fr; }
             .roulette-container { width: 250px; height: 250px; }
@@ -383,8 +452,9 @@ def game():
     </style>
 </head>
 <body>
-    <!-- Модальное окно регистрации -->
-    <div class="registration-modal" id="registration-modal">
+    <div class="connection-status status-connected" id="connection-status">🟢 Connected</div>
+
+    <div class="registration-modal" id="registration-modal" style="display: none;">
         <div class="registration-form">
             <h2>🎰 Welcome to Casino!</h2>
             <p>Enter your display name to start playing</p>
@@ -394,15 +464,11 @@ def game():
         </div>
     </div>
 
-    <!-- Статус подключения -->
-    <div class="connection-status status-disconnected" id="connection-status">🔴 Connecting...</div>
-
     <div class="container" id="game-container" style="display: none;">
         <div class="header">
             <h1>🎰 ONLINE ROULETTE</h1>
         </div>
         
-        <!-- Информация об игроке -->
         <div class="player-info">
             <strong>👋 <span id="player-name">Player</span></strong>
             <small id="player-id" style="opacity: 0.7;"></small>
@@ -448,13 +514,11 @@ def game():
             </div>
         </div>
         
-        <!-- Онлайн игроки -->
         <div class="online-players" id="online-players">
             <h4>👥 Online Players (<span id="players-count">0</span>)</h4>
             <div class="players-list" id="players-list"></div>
         </div>
         
-        <!-- Живые ставки -->
         <div class="live-bets" id="live-bets" style="display: none;">
             <h4>🔥 Live Bets</h4>
             <div id="bets-list"></div>
@@ -476,7 +540,6 @@ def game():
 
     <script>
         // Глобальные переменные
-        let socket = io();
         let tg = window.Telegram.WebApp;
         let userId = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 1000000);
         let userName = tg.initDataUnsafe?.user?.username || `guest_${userId}`;
@@ -492,6 +555,8 @@ def game():
         let onlinePlayers = {};
         let liveBets = {};
         let userBets = {};
+        let gameInterval;
+        let lastSpinResult = null;
         
         // Инициализация Telegram WebApp
         if (tg) {
@@ -500,8 +565,49 @@ def game():
             tg.MainButton.hide();
         }
         
+        // Функция для HTTP запросов
+        async function apiRequest(url, data = null) {
+            const options = {
+                method: data ? 'POST' : 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            try {
+                const response = await fetch(url, options);
+                return await response.json();
+            } catch (error) {
+                console.error('API request failed:', error);
+                return { success: false, message: 'Connection failed' };
+            }
+        }
+        
+        // Проверка регистрации
+        async function checkRegistration() {
+            try {
+                const result = await apiRequest(`/api/check_registration?user_id=${userId}`);
+                if (result.success && result.is_registered) {
+                    isRegistered = true;
+                    displayName = result.display_name;
+                    userBalance = result.balance;
+                    showGameInterface();
+                    startGamePolling();
+                } else {
+                    showRegistrationModal();
+                }
+            } catch (error) {
+                console.error('Registration check failed:', error);
+                showRegistrationModal();
+            }
+        }
+        
         // Регистрация пользователя
-        function registerUser() {
+        async function registerUser() {
             const nameInput = document.getElementById('display-name');
             const name = nameInput.value.trim();
             
@@ -515,112 +621,116 @@ def game():
                 return;
             }
             
-            displayName = name;
             document.getElementById('register-btn').disabled = true;
             document.getElementById('register-btn').textContent = 'Registering...';
             
-            // Отправляем регистрацию на сервер
-            socket.emit('register_user', {
-                user_id: userId,
-                username: userName,
-                display_name: displayName
-            });
+            try {
+                const result = await apiRequest('/api/register', {
+                    user_id: userId,
+                    username: userName,
+                    display_name: name
+                });
+                
+                if (result.success) {
+                    displayName = result.display_name;
+                    userBalance = result.balance;
+                    isRegistered = true;
+                    showGameInterface();
+                    startGamePolling();
+                } else {
+                    alert(result.message);
+                    document.getElementById('register-btn').disabled = false;
+                    document.getElementById('register-btn').textContent = '🚀 Start Playing';
+                }
+            } catch (error) {
+                alert('Registration failed. Please try again.');
+                document.getElementById('register-btn').disabled = false;
+                document.getElementById('register-btn').textContent = '🚀 Start Playing';
+            }
         }
         
-        // Socket.IO события
-        socket.on('connect', function() {
-            console.log('Connected to server');
-            document.getElementById('connection-status').className = 'connection-status status-connected';
-            document.getElementById('connection-status').textContent = '🟢 Connected';
-            
-            // Проверяем регистрацию
-            socket.emit('check_registration', { user_id: userId });
-        });
-        
-        socket.on('disconnect', function() {
-            console.log('Disconnected from server');
-            document.getElementById('connection-status').className = 'connection-status status-disconnected';
-            document.getElementById('connection-status').textContent = '🔴 Disconnected';
-        });
-        
-        socket.on('registration_checked', function(data) {
-            if (data.is_registered) {
-                isRegistered = true;
-                displayName = data.display_name;
-                userBalance = data.balance;
-                showGameInterface();
-            } else {
-                showRegistrationModal();
+        // Размещение ставки
+        async function placeBet(color) {
+            if (gameState.isSpinning || gameState.countdown <= 3) {
+                showResult('❌ Betting is closed!', 'result-lose');
+                return;
             }
-        });
-        
-        socket.on('registration_success', function(data) {
-            isRegistered = true;
-            userBalance = data.balance;
-            showGameInterface();
-        });
-        
-        socket.on('registration_error', function(data) {
-            alert(data.message);
-            document.getElementById('register-btn').disabled = false;
-            document.getElementById('register-btn').textContent = '🚀 Start Playing';
-        });
-        
-        // Синхронизация игрового состояния
-        socket.on('game_state_update', function(data) {
-            gameState = data;
-            updateGameUI();
-        });
-        
-        socket.on('spin_started', function(data) {
-            gameState.isSpinning = true;
-            startSpinAnimation(data.final_number);
-            showResult('🎰 Spinning...', '');
-            updateBetButtons();
-        });
-        
-        socket.on('spin_result', function(data) {
-            gameState.lastResult = data.result;
-            gameState.history = data.history;
-            gameState.isSpinning = false;
             
-            document.getElementById('result-number').textContent = data.result.number;
-            processSpinResult(data.result, data.user_result);
+            const betAmount = parseInt(document.getElementById('bet-amount').value);
             
-            // Очищаем ставки
-            liveBets = {};
-            userBets = {};
-            updateBetsDisplay();
-            updateGameUI();
-        });
+            if (betAmount < 10 || betAmount > 20000) {
+                showResult('❌ Bet must be between 10 and 20,000 stars!', 'result-lose');
+                return;
+            }
+            
+            if (betAmount > userBalance) {
+                showResult('❌ Insufficient balance!', 'result-lose');
+                return;
+            }
+            
+            try {
+                const result = await apiRequest('/api/place_bet', {
+                    user_id: userId,
+                    bet_type: color,
+                    amount: betAmount
+                });
+                
+                if (result.success) {
+                    userBalance = result.new_balance;
+                    userBets[color] = (userBets[color] || 0) + betAmount;
+                    showResult(`✅ Bet placed: ${color.toUpperCase()} ${betAmount} ⭐`, '');
+                    updateGameUI();
+                } else {
+                    showResult('❌ ' + result.message, 'result-lose');
+                }
+            } catch (error) {
+                showResult('❌ Bet failed. Please try again.', 'result-lose');
+            }
+        }
         
-        // Обновление игроков онлайн
-        socket.on('players_update', function(data) {
-            onlinePlayers = data.players;
-            updatePlayersDisplay();
-        });
-        
-        // Обновление ставок
-        socket.on('bets_update', function(data) {
-            liveBets = data.bets;
-            updateBetsDisplay();
-        });
-        
-        // Обновление баланса
-        socket.on('balance_update', function(data) {
-            userBalance = data.balance;
-            updateGameUI();
-        });
-        
-        // Ошибки ставок
-        socket.on('bet_error', function(data) {
-            showResult('❌ ' + data.message, 'result-lose');
-        });
-        
-        socket.on('bet_success', function(data) {
-            userBets[data.bet_type] = (userBets[data.bet_type] || 0) + data.amount;
-            showResult(`✅ Bet placed: ${data.bet_type.toUpperCase()} ${data.amount} ⭐`, '');
-        });
+        // Polling для обновления состояния игры
+        function startGamePolling() {
+            // Добавляем игрока в онлайн список
+            onlinePlayers[userId] = {
+                display_name: displayName,
+                user_id: userId
+            };
+            
+            gameInterval = setInterval(async () => {
+                try {
+                    const result = await apiRequest('/api/game_state');
+                    
+                    // Обновляем состояние игры
+                    const previousSpinning = gameState.isSpinning;
+                    gameState = result.game_state;
+                    onlinePlayers = result.online_players || onlinePlayers;
+                    liveBets = result.current_bets || {};
+                    
+                    // Проверяем начало спина
+                    if (!previousSpinning && gameState.is_spinning) {
+                        startSpinAnimation();
+                        showResult('🎰 Spinning...', '');
+                    }
+                    
+                    // Проверяем окончание спина
+                    if (previousSpinning && !gameState.is_spinning && lastSpinResult !== gameState.last_result.number) {
+                        lastSpinResult = gameState.last_result.number;
+                        document.getElementById('result-number').textContent = gameState.last_result.number;
+                        processSpinResult(gameState.last_result);
+                        userBets = {}; // Очищаем ставки пользователя
+                    }
+                    
+                    updateGameUI();
+                    updatePlayersDisplay();
+                    updateBetsDisplay();
+                    
+                } catch (error) {
+                    console.error('Game state update failed:', error);
+                    document.getElementById('connection-status').className = 'connection-status status-disconnected';
+                    document.getElementById('connection-status').textContent = '🔴 Connection Lost';
+                }
+            }, 1000); // Обновление каждую секунду
+        }
         
         // Функции интерфейса
         function showRegistrationModal() {
@@ -635,9 +745,6 @@ def game():
             document.getElementById('player-name').textContent = displayName;
             document.getElementById('player-id').textContent = `ID: ${userId}`;
             
-            // Присоединяемся к игровой комнате
-            socket.emit('join_game', { user_id: userId });
-            
             updateGameUI();
         }
         
@@ -648,7 +755,7 @@ def game():
             
             // Предупреждение при последних секундах
             const countdownContainer = document.getElementById('countdown-container');
-            if (gameState.countdown <= 5 && !gameState.isSpinning) {
+            if (gameState.countdown <= 5 && !gameState.is_spinning) {
                 countdownContainer.classList.add('countdown-warning');
             } else {
                 countdownContainer.classList.remove('countdown-warning');
@@ -661,7 +768,7 @@ def game():
         function updateBetButtons() {
             const betAmount = parseInt(document.getElementById('bet-amount').value) || 0;
             const buttons = ['red-btn', 'black-btn', 'green-btn'];
-            const canBet = !gameState.isSpinning && gameState.countdown > 3 && betAmount >= 10 && betAmount <= 20000 && betAmount <= userBalance;
+            const canBet = !gameState.is_spinning && gameState.countdown > 3 && betAmount >= 10 && betAmount <= 20000 && betAmount <= userBalance;
             
             buttons.forEach(btnId => {
                 document.getElementById(btnId).disabled = !canBet;
@@ -676,13 +783,14 @@ def game():
             const playersList = document.getElementById('players-list');
             const playersCount = document.getElementById('players-count');
             
-            playersCount.textContent = Object.keys(onlinePlayers).length;
+            const playersArray = Object.values(onlinePlayers);
+            playersCount.textContent = playersArray.length;
             playersList.innerHTML = '';
             
-            Object.values(onlinePlayers).forEach(player => {
+            playersArray.forEach(player => {
                 const playerChip = document.createElement('div');
-                playerChip.className = 'player-chip online';
-                playerChip.textContent = player.display_name;
+                playerChip.className = 'player-chip';
+                playerChip.textContent = player.display_name || `Player ${player.user_id}`;
                 playersList.appendChild(playerChip);
             });
         }
@@ -726,43 +834,20 @@ def game():
             const historyContainer = document.getElementById('history-numbers');
             historyContainer.innerHTML = '';
             
-            gameState.history.slice(-10).forEach((result, index) => {
-                const numberDiv = document.createElement('div');
-                numberDiv.className = `history-number history-${result.color}`;
-                numberDiv.textContent = result.number;
-                numberDiv.style.animationDelay = `${index * 0.1}s`;
-                historyContainer.appendChild(numberDiv);
-            });
+            if (gameState.spin_history && gameState.spin_history.length > 0) {
+                gameState.spin_history.slice(-10).forEach((result, index) => {
+                    const numberDiv = document.createElement('div');
+                    numberDiv.className = `history-number history-${result.color}`;
+                    numberDiv.textContent = result.number;
+                    numberDiv.style.animationDelay = `${index * 0.1}s`;
+                    historyContainer.appendChild(numberDiv);
+                });
+            }
         }
         
-        function placeBet(color) {
-            if (gameState.isSpinning || gameState.countdown <= 3) {
-                showResult('❌ Betting is closed!', 'result-lose');
-                return;
-            }
-            
-            const betAmount = parseInt(document.getElementById('bet-amount').value);
-            
-            if (betAmount < 10 || betAmount > 20000) {
-                showResult('❌ Bet must be between 10 and 20,000 stars!', 'result-lose');
-                return;
-            }
-            
-            if (betAmount > userBalance) {
-                showResult('❌ Insufficient balance!', 'result-lose');
-                return;
-            }
-            
-            // Отправляем ставку на сервер
-            socket.emit('place_bet', {
-                user_id: userId,
-                bet_type: color,
-                amount: betAmount
-            });
-        }
-        
-        function startSpinAnimation(finalNumber) {
+        function startSpinAnimation() {
             const wheel = document.getElementById('roulette-wheel');
+            const finalNumber = gameState.last_result.number;
             const rouletteNumbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
             
             // Случайное количество оборотов + точная позиция
@@ -780,13 +865,28 @@ def game():
             }, 8000);
         }
         
-        function processSpinResult(result, userResult) {
-            if (userResult) {
-                if (userResult.won) {
-                    showResult(`🎉 WIN! ${result.color.toUpperCase()} ${result.number} - You won ${userResult.win_amount} ⭐!`, 'result-win');
+        function processSpinResult(result) {
+            // Проверяем выигрыш пользователя
+            let totalWin = 0;
+            let totalLoss = 0;
+            let won = false;
+            
+            for (const [betType, betAmount] of Object.entries(userBets)) {
+                if (betType === result.color) {
+                    const multiplier = result.color === 'green' ? 36 : 2;
+                    const winAmount = betAmount * multiplier;
+                    totalWin += winAmount;
+                    won = true;
                 } else {
-                    showResult(`💔 LOSE! ${result.color.toUpperCase()} ${result.number} - You lost ${userResult.loss_amount} ⭐`, 'result-lose');
+                    totalLoss += betAmount;
                 }
+            }
+            
+            if (won) {
+                userBalance += totalWin;
+                showResult(`🎉 WIN! ${result.color.toUpperCase()} ${result.number} - You won ${totalWin} ⭐!`, 'result-win');
+            } else if (totalLoss > 0) {
+                showResult(`💔 LOSE! ${result.color.toUpperCase()} ${result.number} - You lost ${totalLoss} ⭐`, 'result-lose');
             } else {
                 showResult(`🎰 Result: ${result.color.toUpperCase()} ${result.number}`, '');
             }
@@ -810,57 +910,54 @@ def game():
         
         // Предотвращение закрытия во время игры
         window.addEventListener('beforeunload', function(e) {
-            if (Object.keys(userBets).length > 0 && !gameState.isSpinning) {
+            if (Object.keys(userBets).length > 0 && !gameState.is_spinning) {
                 e.preventDefault();
                 e.returnValue = 'You have active bets. Are you sure you want to leave?';
             }
         });
         
-        // Автоматическое переподключение
-        socket.on('reconnect', function() {
-            console.log('Reconnected to server');
-            if (isRegistered) {
-                socket.emit('join_game', { user_id: userId });
-            }
+        // Запуск при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            checkRegistration();
         });
     </script>
 </body>
 </html>''')
 
-# SocketIO события
-@socketio.on('connect')
-def handle_connect():
-    print(f'Client connected: {request.sid}')
+# API endpoints
+@app.route('/api/status')
+def api_status():
+    return jsonify({
+        'status': 'online',
+        'players_online': len(online_players),
+        'game_state': game_state,
+        'current_bets_count': len(current_bets),
+        'timestamp': datetime.now().isoformat()
+    })
 
-@socketio.on('disconnect')
-def handle_disconnect():
-    print(f'Client disconnected: {request.sid}')
-    # Удаляем игрока из онлайн списка
-    for user_id, player in list(online_players.items()):
-        if player.get('session_id') == request.sid:
-            del online_players[user_id]
-            break
+@app.route('/api/check_registration')
+def api_check_registration():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User ID required'})
     
-    socketio.emit('players_update', {'players': online_players}, broadcast=True)
-
-@socketio.on('check_registration')
-def handle_check_registration(data):
-    user_id = data['user_id']
-    user = get_user(user_id)
+    user = get_user(int(user_id))
     
     if user and user[5]:  # is_registered = 1
-        emit('registration_checked', {
+        return jsonify({
+            'success': True,
             'is_registered': True,
             'display_name': user[3],
             'balance': user[4]
         })
     else:
-        emit('registration_checked', {'is_registered': False})
+        return jsonify({'success': True, 'is_registered': False})
 
-@socketio.on('register_user')
-def handle_register_user(data):
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    data = request.json
     user_id = data['user_id']
-    username = data['username']
+    username = data.get('username', '')
     display_name = data['display_name']
     
     try:
@@ -871,9 +968,8 @@ def handle_register_user(data):
         existing = cursor.fetchone()
         
         if existing:
-            emit('registration_error', {'message': 'This name is already taken!'})
             conn.close()
-            return
+            return jsonify({'success': False, 'message': 'This name is already taken!'})
         
         # Обновляем или создаем пользователя
         user = get_user(user_id)
@@ -881,58 +977,43 @@ def handle_register_user(data):
             update_user(user_id, username=username, display_name=display_name, is_registered=1)
         
         user = get_user(user_id)
-        emit('registration_success', {
+        conn.close()
+        
+        # Добавляем в онлайн игроков
+        online_players[str(user_id)] = {
+            'user_id': user_id,
+            'display_name': display_name,
+            'joined_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
             'display_name': display_name,
             'balance': user[4]
         })
         
-        conn.close()
-        
     except Exception as e:
-        emit('registration_error', {'message': 'Registration failed. Please try again.'})
+        return jsonify({'success': False, 'message': 'Registration failed. Please try again.'})
 
-@socketio.on('join_game')
-def handle_join_game(data):
-    user_id = data['user_id']
-    user = get_user(user_id)
-    
-    if user and user[5]:  # is_registered
-        online_players[user_id] = {
-            'user_id': user_id,
-            'display_name': user[3],
-            'session_id': request.sid,
-            'joined_at': datetime.now().isoformat()
-        }
-        
-        join_room('game_room')
-        
-        # Отправляем текущее состояние игры
-        emit('game_state_update', game_state)
-        emit('players_update', {'players': online_players}, broadcast=True)
-        emit('bets_update', {'bets': current_bets}, broadcast=True)
-
-@socketio.on('place_bet')
-def handle_place_bet(data):
+@app.route('/api/place_bet', methods=['POST'])
+def api_place_bet():
+    data = request.json
     user_id = data['user_id']
     bet_type = data['bet_type']
     amount = data['amount']
     
     user = get_user(user_id)
     if not user or not user[5]:  # not registered
-        emit('bet_error', {'message': 'User not registered'})
-        return
+        return jsonify({'success': False, 'message': 'User not registered'})
     
     if game_state['is_spinning'] or game_state['countdown'] <= 3:
-        emit('bet_error', {'message': 'Betting is closed'})
-        return
+        return jsonify({'success': False, 'message': 'Betting is closed'})
     
     if amount < 10 or amount > 20000:
-        emit('bet_error', {'message': 'Invalid bet amount'})
-        return
+        return jsonify({'success': False, 'message': 'Invalid bet amount'})
     
     if amount > user[4]:  # balance
-        emit('bet_error', {'message': 'Insufficient balance'})
-        return
+        return jsonify({'success': False, 'message': 'Insufficient balance'})
     
     # Сохраняем ставку
     new_balance = user[4] - amount
@@ -940,22 +1021,70 @@ def handle_place_bet(data):
     save_bet(user[0], game_state['round_id'], bet_type, amount)
     
     # Добавляем в текущие ставки
-    if user_id not in current_bets:
-        current_bets[user_id] = {}
+    user_id_str = str(user_id)
+    if user_id_str not in current_bets:
+        current_bets[user_id_str] = {}
     
-    if bet_type not in current_bets[user_id]:
-        current_bets[user_id][bet_type] = {
+    if bet_type not in current_bets[user_id_str]:
+        current_bets[user_id_str][bet_type] = {
             'display_name': user[3],
             'type': bet_type,
             'amount': 0,
             'timestamp': datetime.now().isoformat()
         }
     
-    current_bets[user_id][bet_type]['amount'] += amount
+    current_bets[user_id_str][bet_type]['amount'] += amount
     
-    emit('bet_success', {'bet_type': bet_type, 'amount': amount})
-    emit('balance_update', {'balance': new_balance})
-    socketio.emit('bets_update', {'bets': current_bets}, room='game_room')
+    return jsonify({
+        'success': True,
+        'bet_type': bet_type,
+        'amount': amount,
+        'new_balance': new_balance
+    })
+
+@app.route('/api/game_state')
+def api_game_state():
+    return jsonify({
+        'game_state': game_state,
+        'online_players': online_players,
+        'current_bets': current_bets,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/players')
+def api_players():
+    return jsonify({
+        'players': online_players,
+        'count': len(online_players)
+    })
+
+@app.route('/api/history')
+def api_history():
+    try:
+        conn = sqlite3.connect('casino_online.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT round_id, result_number, result_color, total_bets, created_at
+            FROM game_history 
+            ORDER BY created_at DESC 
+            LIMIT 50
+        ''')
+        history = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({
+            'history': [
+                {
+                    'round_id': row[0],
+                    'number': row[1],
+                    'color': row[2],
+                    'total_bets': row[3],
+                    'timestamp': row[4]
+                } for row in history
+            ]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Telegram Bot функции
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1144,28 +1273,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Cross-platform compatibility
 • Mobile-optimized interface
 
-<b>🔥 Advanced Features:</b>
-• Live player list with online status
-• Real-time bet tracking
-• Historical results display
-• Personal statistics tracking
-• Automatic reconnection
-• Responsive design for all devices
-
-<b>💡 Pro Tips:</b>
-• Register to save your progress permanently
-• Start with small bets to learn the game
-• Watch other players' betting patterns
-• Green has the highest payout but lowest probability
-• The game runs automatically every 25 seconds
-• Your balance is synchronized across all devices
-
-<b>🛡️ Fair Play:</b>
-• Results are generated server-side
-• All spins are random and fair
-• No manipulation possible
-• Transparent gameplay for all players
-
 Good luck at the tables! 🍀
     """
     
@@ -1174,8 +1281,23 @@ Good luck at the tables! 🍀
     
     await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=reply_markup)
 
-def get_color_emoji(color):
-    return {'red': '🔴', 'black': '⚫', 'green': '🟢'}.get(color, '🎰')
+def run_bot():
+    """Запуск Telegram бота"""
+    try:
+        app_bot = Application.builder().token(BOT_TOKEN).build()
+        
+        # Команды
+        app_bot.add_handler(CommandHandler("start", start))
+        app_bot.add_handler(CommandHandler("balance", balance))
+        app_bot.add_handler(CommandHandler("online", online))
+        app_bot.add_handler(CommandHandler("stats", stats))
+        app_bot.add_handler(CommandHandler("help", help_command))
+        
+        # Запуск бота
+        app_bot.run_polling(drop_pending_updates=True)
+        
+    except Exception as e:
+        print(f"Bot error: {e}")
 
 # Игровой движок (ОНЛАЙН синхронизированный)
 def online_game_engine():
@@ -1191,14 +1313,9 @@ def online_game_engine():
                         break
                     
                     game_state['countdown'] = i
-                    
-                    # Отправляем обновление всем подключенным игрокам
-                    socketio.emit('game_state_update', game_state, room='game_room')
-                    
                     time.sleep(1)
                 
-                if not game_state['is_spinning']:
-                    # Начинаем спин
+                if not # Начинаем спин
                     game_state['is_spinning'] = True
                     game_state['countdown'] = 0
                     game_state['round_id'] = int(time.time())
@@ -1212,17 +1329,11 @@ def online_game_engine():
                     
                     print(f"🎰 ONLINE SPIN: {result_color.upper()} {result_number}")
                     
-                    # Уведомляем всех о начале спина
-                    socketio.emit('spin_started', {
-                        'final_number': result_number,
-                        'timestamp': datetime.now().isoformat()
-                    }, room='game_room')
-                    
                     # Ждем анимацию (8 секунд)
                     time.sleep(8)
                     
                     # Обрабатываем результаты для всех игроков
-                    spin_results = process_online_spin_results(result_number, result_color)
+                    process_online_spin_results(result_number, result_color)
                     
                     # Сохраняем результат
                     game_state['last_result'] = {'number': result_number, 'color': result_color}
@@ -1235,32 +1346,9 @@ def online_game_engine():
                     # Сохраняем в базу данных
                     save_game_history(game_state['round_id'], result_number, result_color, len(current_bets))
                     
-                    # Отправляем результат всем игрокам
-                    socketio.emit('spin_result', {
-                        'result': {'number': result_number, 'color': result_color},
-                        'history': game_state['spin_history'],
-                        'user_result': None,  # Будет заполнено индивидуально
-                        'timestamp': datetime.now().isoformat()
-                    }, room='game_room')
-                    
-                    # Отправляем индивидуальные результаты
-                    for user_id, result_data in spin_results.items():
-                        if user_id in online_players:
-                            session_id = online_players[user_id]['session_id']
-                            socketio.emit('spin_result', {
-                                'result': {'number': result_number, 'color': result_color},
-                                'history': game_state['spin_history'], 
-                                'user_result': result_data,
-                                'timestamp': datetime.now().isoformat()
-                            }, room=session_id)
-                    
                     # Очищаем ставки
                     current_bets = {}
                     game_state['is_spinning'] = False
-                    
-                    # Обновляем всех игроков
-                    socketio.emit('game_state_update', game_state, room='game_room')
-                    socketio.emit('bets_update', {'bets': current_bets}, room='game_room')
             
             time.sleep(0.1)  # Малая задержка для плавности
             
@@ -1270,8 +1358,6 @@ def online_game_engine():
 
 def process_online_spin_results(number, color):
     """Обработка результатов спина для всех онлайн игроков"""
-    results = {}
-    
     try:
         conn = sqlite3.connect('casino_online.db')
         cursor = conn.cursor()
@@ -1315,41 +1401,17 @@ def process_online_spin_results(number, color):
             if won:
                 new_balance = current_balance + total_win
                 update_user(int(user_id), balance=new_balance)
-                
-                results[user_id] = {
-                    'won': True,
-                    'win_amount': total_win,
-                    'loss_amount': 0,
-                    'new_balance': new_balance
-                }
-                
                 print(f"Player {user[3]} won {total_win} stars!")
             else:
-                results[user_id] = {
-                    'won': False,
-                    'win_amount': 0,
-                    'loss_amount': total_loss,
-                    'new_balance': current_balance
-                }
-                
                 print(f"Player {user[3]} lost {total_loss} stars")
-            
-            # Отправляем обновление баланса
-            if user_id in online_players:
-                session_id = online_players[user_id]['session_id']
-                socketio.emit('balance_update', {
-                    'balance': results[user_id]['new_balance']
-                }, room=session_id)
         
         conn.commit()
         conn.close()
         
     except Exception as e:
         print(f"Error processing online spin results: {e}")
-        if conn:
+        if 'conn' in locals():
             conn.close()
-    
-    return results
 
 def save_game_history(round_id, result_number, result_color, total_bets):
     """Сохранение истории игры"""
@@ -1365,71 +1427,6 @@ def save_game_history(round_id, result_number, result_color, total_bets):
     except Exception as e:
         print(f"Error saving game history: {e}")
 
-def run_bot():
-    """Запуск Telegram бота"""
-    try:
-        app_bot = Application.builder().token(BOT_TOKEN).build()
-        
-        # Команды
-        app_bot.add_handler(CommandHandler("start", start))
-        app_bot.add_handler(CommandHandler("balance", balance))
-        app_bot.add_handler(CommandHandler("online", online))
-        app_bot.add_handler(CommandHandler("stats", stats))
-        app_bot.add_handler(CommandHandler("help", help_command))
-        
-        # Запуск бота
-        app_bot.run_polling(drop_pending_updates=True)
-        
-    except Exception as e:
-        print(f"Bot error: {e}")
-
-# API endpoints для мониторинга
-@app.route('/api/status')
-def api_status():
-    return jsonify({
-        'status': 'online',
-        'players_online': len(online_players),
-        'game_state': game_state,
-        'current_bets_count': len(current_bets),
-        'timestamp': datetime.now().isoformat()
-    })
-
-@app.route('/api/players')
-def api_players():
-    return jsonify({
-        'players': online_players,
-        'count': len(online_players)
-    })
-
-@app.route('/api/history')
-def api_history():
-    try:
-        conn = sqlite3.connect('casino_online.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT round_id, result_number, result_color, total_bets, created_at
-            FROM game_history 
-            ORDER BY created_at DESC 
-            LIMIT 50
-        ''')
-        history = cursor.fetchall()
-        conn.close()
-        
-        return jsonify({
-            'history': [
-                {
-                    'round_id': row[0],
-                    'number': row[1],
-                    'color': row[2],
-                    'total_bets': row[3],
-                    'timestamp': row[4]
-                } for row in history
-            ]
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# Периодическая очистка неактивных пользователей
 def cleanup_inactive_players():
     """Очистка неактивных игроков"""
     while True:
@@ -1445,9 +1442,6 @@ def cleanup_inactive_players():
             for user_id in inactive_players:
                 del online_players[user_id]
                 print(f"Removed inactive player: {user_id}")
-            
-            if inactive_players:
-                socketio.emit('players_update', {'players': online_players}, room='game_room')
             
             time.sleep(60)  # Проверка каждую минуту
             
@@ -1483,6 +1477,6 @@ if __name__ == '__main__':
     else:
         print("⚠️  BOT_TOKEN not configured")
     
-    # Запуск Flask сервера с SocketIO
-    print(f"🚀 Starting online casino server on port {PORT}")
-    socketio.run(app, host='0.0.0.0', port=PORT, debug=False, allow_unsafe_werkzeug=True)
+    # Запуск Flask сервера
+    print(f"🚀 Starting Flask server on port {PORT}")
+    app.run(host='0.0.0.0', port=PORT, debug=False)
