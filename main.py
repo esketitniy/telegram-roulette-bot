@@ -1,4 +1,301 @@
-@app.route('/game')
+import asyncio
+import json
+import random
+import sqlite3
+import os
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from flask import Flask, render_template, request, jsonify
+import threading
+
+# Конфигурация
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+WEB_APP_URL = os.getenv('WEB_APP_URL', 'https://telegram-casino.onrender.com')
+PORT = int(os.getenv('PORT', 5000))
+
+print(f"✅ Bot Token: {'НАЙДЕН' if BOT_TOKEN else 'НЕ НАЙДЕН'}")
+print(f"✅ Web App URL: {WEB_APP_URL}")
+print(f"✅ Port: {PORT}")
+
+# Flask приложение
+app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'telegram-casino-secret')
+
+# Рулетка - европейская версия
+ROULETTE_NUMBERS = {
+    0: "green",
+    1: "red", 2: "black", 3: "red", 4: "black", 5: "red", 6: "black",
+    7: "red", 8: "black", 9: "red", 10: "black", 11: "black", 12: "red",
+    13: "black", 14: "red", 15: "black", 16: "red", 17: "black", 18: "red",
+    19: "red", 20: "black", 21: "red", 22: "black", 23: "red", 24: "black",
+    25: "red", 26: "black", 27: "red", 28: "black", 29: "black", 30: "red",
+    31: "black", 32: "red", 33: "black", 34: "red", 35: "black", 36: "red"
+}# База данных
+def init_db():
+    try:
+        conn = sqlite3.connect('casino.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                balance INTEGER DEFAULT 1000,
+                total_games INTEGER DEFAULT 0,
+                total_won INTEGER DEFAULT 0,
+                total_lost INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                bet_type TEXT,
+                bet_amount INTEGER,
+                result_number INTEGER,
+                result_color TEXT,
+                won BOOLEAN,
+                winnings INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ База данных инициализирована")
+    except Exception as e:
+        print(f"❌ Ошибка БД: {e}")
+
+# Функции БД
+def get_user(user_id):
+    try:
+        conn = sqlite3.connect('casino.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+        user = cursor.fetchone()
+        conn.close()
+        return user
+    except:
+        return None
+
+def create_user(user_id, username, first_name):
+    try:
+        conn = sqlite3.connect('casino.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR IGNORE INTO users (user_id, username, first_name)
+            VALUES (?, ?, ?)
+        ''', (user_id, username, first_name))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Ошибка создания пользователя: {e}")
+
+def save_game(user_id, bet_type, bet_amount, result_number, result_color, won, winnings):
+    try:
+        conn = sqlite3.connect('casino.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO games (user_id, bet_type, bet_amount, result_number, result_color, won, winnings)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, bet_type, bet_amount, result_number, result_color, won, winnings))
+        
+        if won:
+            cursor.execute('UPDATE users SET total_games = total_games + 1, total_won = total_won + ?, balance = balance + ? WHERE user_id = ?', (winnings, winnings - bet_amount, user_id))
+        else:
+            cursor.execute('UPDATE users SET total_games = total_games + 1, total_lost = total_lost + ?, balance = balance - ? WHERE user_id = ?', (bet_amount, bet_amount, user_id))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Ошибка сохранения игры: {e}")
+        # Flask routes
+@app.route('/')
+def index():
+    return '''
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🎰 Telegram Casino</title>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                color: white; min-height: 100vh; display: flex;
+                align-items: center; justify-content: center; padding: 20px;
+            }
+            .container { 
+                text-align: center; max-width: 400px; padding: 40px 20px;
+                background: rgba(255, 255, 255, 0.1); border-radius: 20px;
+                backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .logo { font-size: 4em; margin-bottom: 20px; animation: pulse 2s infinite; }
+            @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+            h1 { font-size: 2.5em; margin-bottom: 20px; 
+                 background: linear-gradient(45deg, #FFD700, #FFA500);
+                 -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+                 background-clip: text; }
+            .subtitle { font-size: 1.2em; margin-bottom: 30px; opacity: 0.9; }
+            .features { list-style: none; margin-bottom: 30px; }
+            .features li { padding: 10px 0; font-size: 1.1em; }
+            .cta-button { 
+                background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white;
+                padding: 15px 30px; border: none; border-radius: 50px;
+                font-size: 1.2em; font-weight: bold; cursor: pointer;
+                transition: transform 0.3s; text-decoration: none; display: inline-block;
+                margin: 10px;
+            }
+            .cta-button:hover { transform: translateY(-2px); }
+            .status { margin-top: 20px; padding: 10px; 
+                     background: rgba(0, 255, 0, 0.2); border-radius: 10px;
+                     border: 1px solid rgba(0, 255, 0, 0.3); }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">🎰</div>
+            <h1>PREMIUM CASINO</h1>
+            <p class="subtitle">Премиум казино в Telegram</p>
+            
+            <ul class="features">
+                <li>🔥 Европейская рулетка</li>
+                <li>💎 Виртуальные звезды</li>
+                <li>⚡ Мгновенные результаты</li>
+                <li>🎯 Честная игра</li>
+            </ul>
+            
+            <a href="/game" class="cta-button">🎮 ИГРАТЬ СЕЙЧАС</a>
+            <a href="/health" class="cta-button" style="background: linear-gradient(45deg, #28a745, #20c997);">📊 СТАТУС</a>
+            
+            <div class="status">✅ Сервер работает</div>
+        </div>
+
+        <script>
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                
+                if (tg.themeParams.bg_color) {
+                    document.body.style.background = `linear-gradient(135deg, ${tg.themeParams.bg_color} 0%, #2a5298 100%)`;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/health')
+def health():
+    return jsonify({
+        'status': 'healthy',
+        'app': 'telegram-casino',
+        'bot_configured': bool(BOT_TOKEN)
+    })
+
+@app.route('/api/user/<int:user_id>')
+def get_user_info(user_id):
+    user = get_user(user_id)
+    if user:
+        return jsonify({
+            'user_id': user[0],
+            'username': user[1],
+            'first_name': user[2],
+            'balance': user[3],
+            'total_games': user[4],
+            'total_won': user[5],
+            'total_lost': user[6]
+        })
+    return jsonify({'error': 'User not found'}), 404
+    @app.route('/api/spin', methods=['POST'])
+def spin_api():
+    try:
+        data = request.json
+        user_id = data.get('user_id', 0)
+        bet_type = data.get('bet_type')
+        bet_amount = int(data.get('bet_amount'))
+        
+        # Проверка баланса
+        if user_id:
+            user = get_user(user_id)
+            if user and user[3] < bet_amount:
+                return jsonify({'error': 'Insufficient balance'}), 400
+        
+        # Генерация результата
+        result_number = random.randint(0, 36)
+        result_color = 'green' if result_number == 0 else ROULETTE_NUMBERS[result_number]
+        
+        # Расчет выигрыша
+        won = bet_type == result_color
+        winnings = 0
+        
+        if won:
+            winnings = bet_amount * 36 if result_color == 'green' else bet_amount * 2
+        
+        # Сохранение игры
+        if user_id:
+            save_game(user_id, bet_type, bet_amount, result_number, result_color, won, winnings)
+        
+        return jsonify({
+            'success': True,
+            'result_number': result_number,
+            'result_color': result_color,
+            'won': won,
+            'winnings': winnings,
+            'bet_amount': bet_amount
+        })
+    
+    except Exception as e:
+        print(f"API Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Telegram Bot
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    create_user(user.id, user.username, user.first_name)
+    
+    keyboard = [
+        [InlineKeyboardButton("🎰 ИГРАТЬ В РУЛЕТКУ", web_app=WebAppInfo(url=f"{WEB_APP_URL}/game"))],
+        [InlineKeyboardButton("💰 Баланс", callback_data="balance")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        f"🎰 Добро пожаловать в казино, {user.first_name}!\n\n💰 Ваш баланс: 1000 ⭐",
+        reply_markup=reply_markup
+    )
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "balance":
+        user_data = get_user(query.from_user.id)
+        balance = user_data[3] if user_data else 1000
+        await query.edit_message_text(f"💰 Ваш баланс: {balance} ⭐")
+
+def run_bot():
+    if not BOT_TOKEN:
+        print("❌ BOT_TOKEN не найден")
+        return
+    
+    try:
+        application = Application.builder().token(BOT_TOKEN).build()
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CallbackQueryHandler(handle_callback))
+        print("🤖 Бот запущен!")
+        application.run_polling()
+    except Exception as e:
+        print(f"❌ Ошибка бота: {e}")
+        @app.route('/game')
 def game():
     return '''
     <!DOCTYPE html>
@@ -121,12 +418,10 @@ def game():
         </div>
 
         <script>
-            // Игровые переменные
             let userBalance = 1000;
             let isSpinning = false;
             let userId = null;
 
-            // Telegram WebApp
             let tg = null;
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
@@ -139,7 +434,6 @@ def game():
                 }
             }
 
-            // Загрузка баланса
             async function loadUserBalance() {
                 if (!userId) return;
                 try {
@@ -153,7 +447,6 @@ def game():
                 }
             }
 
-            // Обновление баланса
             function updateBalance(newBalance) {
                 userBalance = newBalance;
                 const balanceElement = document.getElementById('balance');
@@ -168,7 +461,6 @@ def game():
                 }
             }
 
-            // Размещение ставки
             function placeBet(color, amount) {
                 console.log(`🎯 Ставка: ${color} - ${amount}⭐`);
                 
@@ -190,7 +482,6 @@ def game():
                 spinRoulette(color, amount);
             }
 
-            // Анимация рулетки
             function spinRoulette(betColor, betAmount) {
                 const wheel = document.getElementById('wheel');
                 if (wheel) wheel.classList.add('spinning');
@@ -217,98 +508,7 @@ def game():
                 });
             }
 
-            // Обработка результата
             function processSpinResult(data, betColor, betAmount) {
                 const wheel = document.getElementById('wheel');
-                const resultNumber = document.getElementById('result-number');
-                
-                if (wheel) wheel.classList.remove('spinning');
-                if (resultNumber) resultNumber.textContent = data.result_number;
-                
-                const won = data.won;
-                const winnings = data.winnings || 0;
-                
-                if (won) {
-                    updateBalance(userBalance + winnings - betAmount);
-                    showWinResult(data.result_number, data.result_color, winnings);
-                    celebrateWin();
-                } else {
-                    updateBalance(userBalance - betAmount);
-                    showLoseResult(data.result_number, data.result_color, betAmount);
-                    vibratePhone();
-                }
-                
-                setTimeout(() => {
-                    isSpinning = false;
-                    enableAllButtons();
-                }, 2000);
-            }
-
-            // Показ результата выигрыша
-            function showWinResult(number, color, winnings) {
-                const colorEmoji = getColorEmoji(color);
-                const message = `🎉 ВЫИГРЫШ! ${colorEmoji} ${number}<br>💰 +${winnings}⭐`;
-                showResult(message, 'win');
-                
-                if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('heavy');
-                }
-            }
-
-            // Показ результата проигрыша
-            function showLoseResult(number, color, lostAmount) {
-                const colorEmoji = getColorEmoji(color);
-                const message = `😔 Проигрыш ${colorEmoji} ${number}<br>📉 -${lostAmount}⭐`;
-                showResult(message, 'lose');
-            }
-
-            // Получение эмодзи цвета
-            function getColorEmoji(color) {
-                switch(color) {
-                    case 'red': return '🔴';
-                    case 'black': return '⚫';
-                    case 'green': return '🟢';
-                    default: return '⚪';
-                }
-            }
-
-            // Показ результата
-            function showResult(message, type = '') {
-                const resultElement = document.getElementById('game-result');
-                if (resultElement) {
-                    resultElement.innerHTML = `<p>${message}</p>`;
-                    resultElement.className = `result ${type}`;
-                    
-                    resultElement.style.transform = 'scale(0.8)';
-                    resultElement.style.opacity = '0.5';
-                    setTimeout(() => {
-                        resultElement.style.transform = 'scale(1)';
-                        resultElement.style.opacity = '1';
-                    }, 100);
-                }
-            }
-
-            // Локальная генерация результата
-            function generateLocalResult(betColor, betAmount) {
-                const resultNumber = Math.floor(Math.random() * 37);
-                const resultColor = getNumberColor(resultNumber);
-                const won = betColor === resultColor;
-                
-                let winnings = 0;
-                if (won) {
-                    winnings = resultColor === 'green' ? betAmount * 36 : betAmount * 2;
-                }
-                
-                return {
-                    success: true,
-                    result_number: resultNumber,
-                    result_color: resultColor,
-                    won: won,
-                    winnings: winnings
-                };
-            }
-
-            // Определение цвета числа
-            function getNumberColor(number) {
-                if (number === 0) return 'green';
-                const redNumbers = [1,3
+                const resultNumber
+        
