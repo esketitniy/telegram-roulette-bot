@@ -9,3 +9,7 @@ services:
         sync: false
       - key: APP_URL
         sync: false
+    disk:
+      name: casino-data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
