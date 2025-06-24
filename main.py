@@ -333,7 +333,7 @@ def game():
         });
     </script>
 </body>
-</html>"""
+</html>""")
     return html_template
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -392,3 +392,4 @@ if __name__ == '__main__':
         bot_thread.start()
     
     app.run(host='0.0.0.0', port=PORT, debug=False)
+    </html>"""
