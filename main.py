@@ -50,7 +50,7 @@ def index():
     
 @app.route('/game')
 def game():
-    html_template = """<!DOCTYPE html>
+    html_template("""<!DOCTYPE html>
     <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -259,7 +259,7 @@ def game():
     startTimer();
     </script>
 </body>
-</html>"""
+</html>""")
     return html_template
     
     function updateBetDisplay() {
