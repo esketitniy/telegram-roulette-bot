@@ -391,7 +391,7 @@ def game():
             if (isSpinning) return;
             
             isSpinning = true;
-            document.getElementById('game-result').innerHTML = '<p>🎰 Автоматический спин...</p>';
+            document.getElementById('game-result').innerHTML = '<p> Автоматический спин...</p>';
             
             const result = Math.floor(Math.random() * 37);
             const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
@@ -431,21 +431,21 @@ def game():
                 }
             });
             
-            const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
+            const colorEmoji = resultColor === 'red' ?  : (resultColor === 'black' ?  : );
             let resultMessage = '';
             
             if (currentBets.length > 0) {
                 if (totalWinnings > 0) {
-                    resultMessage = '🎉 ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br>💰 +' + totalWinnings + '⭐';
+                    resultMessage = ' ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br> +' + totalWinnings + '';
                     document.getElementById('game-result').classList.add('win-animation');
                     setTimeout(function() {
                         document.getElementById('game-result').classList.remove('win-animation');
                     }, 2000);
                 } else {
-                    resultMessage = '😔 Проигрыш ' + colorEmoji + ' ' + result + '<br>📉 -' + totalLosses + '⭐';
+                    resultMessage = ' Проигрыш ' + colorEmoji + ' ' + result + '<br> -' + totalLosses + '';
                 }
             } else {
-                resultMessage = '🎯 Выпало: ' + colorEmoji + ' ' + result + '<br>💡 Делайте ставки!';
+                resultMessage = ' Выпало: ' + colorEmoji + ' ' + result + '<br> Делайте ставки!';
             }
             
             document.getElementById('game-result').innerHTML = '<p>' + resultMessage + '</p>';
