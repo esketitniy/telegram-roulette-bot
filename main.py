@@ -194,7 +194,7 @@ def index():
 
 @app.route('/game')
 def game():
-    return """<!DOCTYPE html>
+    return """<!DOCTYPE html>"""
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -563,4 +563,4 @@ if BOT_TOKEN:
     bot_thread.start()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT, debug=False)'''
+    app.run(host='0.0.0.0', port=PORT, debug=False)
