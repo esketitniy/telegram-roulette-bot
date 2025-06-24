@@ -194,8 +194,7 @@ def index():
     </body>
     </html>
     '''
-
-@app.route('/game')
+    @app.route('/game')
 def game():
     return '''
     <!DOCTYPE html>
@@ -213,49 +212,156 @@ def game():
                 color: white; min-height: 100vh; padding: 20px;
             }
             .container { max-width: 400px; margin: 0 auto; text-align: center; }
+            
+            /* Рулетка с стрелкой */
+            .roulette-container { 
+                position: relative; width: 220px; height: 220px; 
+                margin: 20px auto; display: flex; align-items: center; justify-content: center;
+            }
             .roulette-wheel { 
                 width: 200px; height: 200px; border-radius: 50%; 
-                margin: 20px auto; position: relative;
+                position: relative;
                 background: conic-gradient(
-                    #ff0000 0deg 20deg, #000000 20deg 40deg, #ff0000 40deg 60deg, 
-                    #000000 60deg 80deg, #ff0000 80deg 100deg, #00ff00 100deg 120deg,
-                    #000000 120deg 140deg, #ff0000 140deg 160deg, #000000 160deg 180deg,
-                    #ff0000 180deg 200deg, #000000 200deg 220deg, #ff0000 220deg 240deg,
-                    #000000 240deg 260deg, #ff0000 260deg 280deg, #000000 280deg 300deg,
-                    #ff0000 300deg 320deg, #000000 320deg 340deg, #ff0000 340deg 360deg
+                    #00ff00 0deg 10deg,    /* 0 - зелёный */
+                    #ff0000 10deg 20deg,   /* 32 - красный */
+                    #000000 20deg 30deg,   /* 15 - чёрный */
+                    #ff0000 30deg 40deg,   /* 19 - красный */
+                    #000000 40deg 50deg,   /* 4 - чёрный */
+                    #ff0000 50deg 60deg,   /* 21 - красный */
+                    #000000 60deg 70deg,   /* 2 - чёрный */
+                    #ff0000 70deg 80deg,   /* 25 - красный */
+                    #000000 80deg 90deg,   /* 17 - чёрный */
+                    #ff0000 90deg 100deg,  /* 34 - красный */
+                    #000000 100deg 110deg, /* 6 - чёрный */
+                    #ff0000 110deg 120deg, /* 27 - красный */
+                    #000000 120deg 130deg, /* 13 - чёрный */
+                    #ff0000 130deg 140deg, /* 36 - красный */
+                    #000000 140deg 150deg, /* 11 - чёрный */
+                    #ff0000 150deg 160deg, /* 30 - красный */
+                    #000000 160deg 170deg, /* 8 - чёрный */
+                    #ff0000 170deg 180deg, /* 23 - красный */
+                    #000000 180deg 190deg, /* 10 - чёрный */
+                    #ff0000 190deg 200deg, /* 5 - красный */
+                    #000000 200deg 210deg, /* 24 - чёрный */
+                    #ff0000 210deg 220deg, /* 16 - красный */
+                    #000000 220deg 230deg, /* 33 - чёрный */
+                    #ff0000 230deg 240deg, /* 1 - красный */
+                    #000000 240deg 250deg, /* 20 - чёрный */
+                    #ff0000 250deg 260deg, /* 14 - красный */
+                    #000000 260deg 270deg, /* 31 - чёрный */
+                    #ff0000 270deg 280deg, /* 9 - красный */
+                    #000000 280deg 290deg, /* 22 - чёрный */
+                    #ff0000 290deg 300deg, /* 18 - красный */
+                    #000000 300deg 310deg, /* 29 - чёрный */
+                    #ff0000 310deg 320deg, /* 7 - красный */
+                    #000000 320deg 330deg, /* 28 - чёрный */
+                    #ff0000 330deg 340deg, /* 12 - красный */
+                    #000000 340deg 350deg, /* 35 - чёрный */
+                    #ff0000 350deg 360deg  /* 3 - красный */
                 );
-                border: 5px solid gold; transition: transform 0.5s ease;
+                border: 5px solid gold; 
+                transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+                z-index: 1;
             }
+            
+            /* Стрелка указатель */
+            .roulette-arrow { 
+                position: absolute; top: -10px; left: 50%; 
+                transform: translateX(-50%); width: 0; height: 0; 
+                border-left: 15px solid transparent; 
+                border-right: 15px solid transparent; 
+                border-top: 30px solid #FFD700; 
+                z-index: 10; 
+                filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+            }
+            
             .wheel-center { 
                 position: absolute; top: 50%; left: 50%; 
-                transform: translate(-50%, -50%); width: 40px; height: 40px; 
-                background: gold; border-radius: 50%; display: flex; 
+                transform: translate(-50%, -50%); width: 50px; height: 50px; 
+                background: radial-gradient(circle, #FFD700, #FFA500); 
+                border-radius: 50%; display: flex; 
                 align-items: center; justify-content: center; 
-                font-weight: bold; color: black; font-size: 16px;
+                font-weight: bold; color: black; font-size: 18px;
+                border: 3px solid #fff; z-index: 5;
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
             }
-            .bet-buttons { 
-                display: grid; grid-template-columns: 1fr 1fr; gap: 10px; 
-                margin: 20px 0; max-width: 300px; margin-left: auto; margin-right: auto;
-            }
-            .bet-btn { 
-                padding: 15px; border: none; border-radius: 10px;
-                font-size: 14px; font-weight: bold; cursor: pointer;
-                transition: all 0.2s; text-align: center;
-            }
-            .bet-btn:active { transform: scale(0.95); }
-            .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-            .bet-red { background: linear-gradient(45deg, #ff4444, #cc0000); color: white; }
-            .bet-black { background: linear-gradient(45deg, #333333, #000000); color: white; }
-            .bet-green { background: linear-gradient(45deg, #00aa00, #006600); color: white; }
-            .balance, .result { 
-                background: rgba(255, 255, 255, 0.1); padding: 15px;
-                border-radius: 10px; margin: 20px 0; backdrop-filter: blur(10px);
+            
+            /* Система ставок */
+            .bet-system { 
+                background: rgba(255, 255, 255, 0.1); padding: 20px;
+                border-radius: 15px; margin: 20px 0; backdrop-filter: blur(10px);
                 border: 1px solid rgba(255, 255, 255, 0.2);
             }
-            .balance h3 { margin: 0; color: #FFD700; }
+            .bet-input-group { 
+                display: flex; gap: 10px; margin-bottom: 15px; 
+                align-items: center; justify-content: center;
+            }
+            .bet-input { 
+                padding: 12px 15px; border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 25px; background: rgba(255, 255, 255, 0.1);
+                color: white; font-size: 16px; text-align: center; width: 120px;
+                backdrop-filter: blur(10px);
+            }
+            .bet-input:focus { 
+                outline: none; border-color: #FFD700; 
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            }
+            .bet-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+            
+            .bet-buttons { 
+                display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; 
+                margin-top: 15px;
+            }
+            .bet-btn { 
+                padding: 15px 10px; border: none; border-radius: 12px;
+                font-size: 13px; font-weight: bold; cursor: pointer;
+                transition: all 0.3s; text-align: center; position: relative;
+                overflow: hidden;
+            }
+            .bet-btn:hover { transform: translateY(-2px); }
+            .bet-btn:active { transform: scale(0.95); }
+            .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+            .bet-red { 
+                background: linear-gradient(45deg, #ff4444, #cc0000); color: white; 
+                box-shadow: 0 4px 15px rgba(255, 68, 68, 0.4);
+            }
+            .bet-black { 
+                background: linear-gradient(45deg, #333333, #000000); color: white; 
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            }
+            .bet-green { 
+                background: linear-gradient(45deg, #00aa00, #006600); color: white; 
+                box-shadow: 0 4px 15px rgba(0, 170, 0, 0.4);
+            }
+            
+            .balance, .result, .timer { 
+                background: rgba(255, 255, 255, 0.1); padding: 15px;
+                border-radius: 12px; margin: 15px 0; backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .balance h3 { margin: 0; color: #FFD700; font-size: 1.4em; }
             .result { min-height: 60px; display: flex; align-items: center; justify-content: center; }
-            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(1800deg); } }
-            .spinning { animation: spin 3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+            
+            .timer { 
+                background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+                border: 2px solid rgba(255, 215, 0, 0.5);
+            }
+            .timer h4 { margin: 0; color: #FFD700; }
+            .countdown { font-size: 2em; font-weight: bold; color: #fff; margin: 10px 0; }
+            
+            /* Анимации */
+            @keyframes spin { 
+                from { transform: rotate(0deg); } 
+                to { transform: rotate(var(--spin-degrees, 1800deg)); } 
+            }
+            .spinning { animation: spin 4s cubic-bezier(0.25, 0.1, 0.25, 1); }
+            @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+            .win-animation { animation: pulse 0.6s ease-in-out 3; }
+            @keyframes countdown-pulse { 
+                0%, 100% { transform: scale(1); color: #fff; } 
+                50% { transform: scale(1.1); color: #ff4444; } 
+            }
+            .countdown-warning { animation: countdown-pulse 1s infinite; }
         </style>
     </head>
     <body>
@@ -266,21 +372,32 @@ def game():
                 <h3>💰 Баланс: <span id="balance">1000</span> ⭐</h3>
             </div>
             
-            <div class="roulette-wheel" id="wheel">
-                <div class="wheel-center" id="result-number">0</div>
+            <div class="timer">
+                <h4>⏰ До следующего спина:</h4>
+                <div class="countdown" id="countdown">25</div>
             </div>
             
-            <div class="bet-buttons">
-                <button class="bet-btn bet-red" onclick="placeBet('red', 50)">🔴 КРАСНОЕ ×2<br>50⭐</button>
-                <button class="bet-btn bet-black" onclick="placeBet('black', 50)">⚫ ЧЁРНОЕ ×2<br>50⭐</button>
-                <button class="bet-btn bet-green" onclick="placeBet('green', 50)">🟢 ЗЕЛЁНОЕ ×36<br>50⭐</button>
-                <button class="bet-btn bet-red" onclick="placeBet('red', 100)">🔴 КРАСНОЕ<br>100⭐</button>
-                <button class="bet-btn bet-black" onclick="placeBet('black', 100)">⚫ ЧЁРНОЕ<br>100⭐</button>
-                <button class="bet-btn bet-green" onclick="placeBet('green',<button class="bet-btn bet-green" onclick="placeBet('green', 100)">🟢 ЗЕЛЁНОЕ<br>100⭐</button>
+            <div class="roulette-container">
+                <div class="roulette-arrow"></div>
+                <div class="roulette-wheel" id="wheel">
+                    <div class="wheel-center" id="result-number">0</div>
+                </div>
+            </div>
+            
+            <div class="bet-system">
+                <h3>💸 Сделать ставку</h3>
+                <div class="bet-input-group">
+                    <input type="number" id="bet-amount" class="bet-input" placeholder="Сумма ⭐" min="1" max="1000" value="10">
+                </div>
+                <div class="bet-buttons">
+                    <button class="bet-btn bet-red" onclick="placeBet('red')">🔴 КРАСНОЕ<br>×2</button>
+                    <button class="bet-btn bet-black" onclick="placeBet('black')">⚫ ЧЁРНОЕ<br>×2</button>
+                    <button class="bet-btn bet-green" onclick="placeBet('green')">🟢 ЗЕЛЁНОЕ<br>×36</button>
+                </div>
             </div>
             
             <div class="result" id="game-result">
-                <p>🎯 Сделайте ставку для начала игры!</p>
+                <p>🎯 Введите сумму ставки и выберите цвет!</p>
             </div>
         </div>
 
@@ -288,7 +405,12 @@ def game():
             let userBalance = 1000;
             let isSpinning = false;
             let userId = null;
+            let currentBets = [];
+            let countdownTimer = 25;
+            let gameInterval;
+            let countdownInterval;
 
+            // Telegram WebApp инициализация
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 tg.ready();
@@ -299,161 +421,50 @@ def game():
                 }
             }
 
-            function placeBet(color, amount) {
-                if (isSpinning) {
-                    document.getElementById('game-result').innerHTML = '<p>⏳ Рулетка уже крутится!</p>';
-                    return;
-                }
-                
-                if (userBalance < amount) {
-                    document.getElementById('game-result').innerHTML = '<p>❌ Недостаточно средств!</p>';
-                    return;
-                }
-                
-                isSpinning = true;
-                document.getElementById('game-result').innerHTML = '<p>🎰 Крутим рулетку...</p>';
-                document.getElementById('wheel').classList.add('spinning');
-                
-                setTimeout(function() {
-                    const result = Math.floor(Math.random() * 37);
-                    const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-                    const resultColor = result === 0 ? 'green' : (redNumbers.includes(result) ? 'red' : 'black');
-                    const won = color === resultColor;
-                    const winnings = won ? (resultColor === 'green' ? amount * 36 : amount * 2) : 0;
+            // Автоматический спин каждые 25 секунд
+            function startGameTimer() {
+                countdownInterval = setInterval(function() {
+                    countdownTimer--;
+                    const countdownEl = document.getElementById('countdown');
+                    countdownEl.textContent = countdownTimer;
                     
-                    document.getElementById('result-number').textContent = result;
-                    document.getElementById('wheel').classList.remove('spinning');
-                    
-                    if (won) {
-                        userBalance += winnings - amount;
-                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
-                        document.getElementById('game-result').innerHTML = '<p>🎉 ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br>💰 +' + winnings + '⭐</p>';
+                    if (countdownTimer <= 5) {
+                        countdownEl.classList.add('countdown-warning');
                     } else {
-                        userBalance -= amount;
-                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
-                        document.getElementById('game-result').innerHTML = '<p>😔 Проигрыш ' + colorEmoji + ' ' + result + '<br>📉 -' + amount + '⭐</p>';
+                        countdownEl.classList.remove('countdown-warning');
                     }
                     
-                    document.getElementById('balance').textContent = userBalance;
-                    isSpinning = false;
-                }, 3000);
+                    if (countdownTimer <= 0) {
+                        autoSpin();
+                        countdownTimer = 25;
+                    }
+                }, 1000);
             }
-        </script>
-    </body>
-    </html>
-    '''
 
-@app.route('/health')
-def health():
-    return jsonify({
-        'status': 'healthy',
-        'app': 'telegram-casino',
-        'bot_configured': bool(BOT_TOKEN)
-    })
-
-@app.route('/api/user/<int:user_id>')
-def get_user_info(user_id):
-    user = get_user(user_id)
-    if user:
-        return jsonify({
-            'user_id': user[0],
-            'username': user[1],
-            'first_name': user[2],
-            'balance': user[3],
-            'total_games': user[4],
-            'total_won': user[5],
-            'total_lost': user[6]
-        })
-    return jsonify({'error': 'User not found'}), 404
-
-@app.route('/api/spin', methods=['POST'])
-def spin_api():
-    try:
-        data = request.json
-        user_id = data.get('user_id', 0)
-        bet_type = data.get('bet_type')
-        bet_amount = int(data.get('bet_amount'))
-        
-        # Проверка баланса
-        if user_id:
-            user = get_user(user_id)
-            if user and user[3] < bet_amount:
-                return jsonify({'error': 'Insufficient balance'}), 400
-        
-        # Генерация результата
-        result_number = random.randint(0, 36)
-        result_color = 'green' if result_number == 0 else ROULETTE_NUMBERS[result_number]
-        
-        # Расчет выигрыша
-        won = bet_type == result_color
-        winnings = 0
-        
-        if won:
-            winnings = bet_amount * 36 if result_color == 'green' else bet_amount * 2
-        
-        # Сохранение игры
-        if user_id:
-            save_game(user_id, bet_type, bet_amount, result_number, result_color, won, winnings)
-        
-        return jsonify({
-            'success': True,
-            'result_number': result_number,
-            'result_color': result_color,
-            'won': won,
-            'winnings': winnings,
-            'bet_amount': bet_amount
-        })
-    
-    except Exception as e:
-        print(f"API Error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# Telegram Bot
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    create_user(user.id, user.username, user.first_name)
-    
-    keyboard = [
-        [InlineKeyboardButton("🎰 ИГРАТЬ В РУЛЕТКУ", web_app=WebAppInfo(url=f"{WEB_APP_URL}/game"))],
-        [InlineKeyboardButton("💰 Баланс", callback_data="balance")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        f"🎰 Добро пожаловать в казино, {user.first_name}!\n\n💰 Ваш баланс: 1000 ⭐",
-        reply_markup=reply_markup
-    )
-
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "balance":
-        user_data = get_user(query.from_user.id)
-        balance = user_data[3] if user_data else 1000
-        await query.edit_message_text(f"💰 Ваш баланс: {balance} ⭐")
-
-def run_bot():
-    if not BOT_TOKEN:
-        print("❌ BOT_TOKEN не найден")
-        return
-    
-    try:
-        application = Application.builder().token(BOT_TOKEN).build()
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CallbackQueryHandler(handle_callback))
-        print("🤖 Бот запущен!")
-        application.run_polling()
-    except Exception as e:
-        print(f"❌ Ошибка бота: {e}")
-
-# Инициализация и запуск
-init_db()
-
-if BOT_TOKEN:
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+            // Автоматический спин
+            function autoSpin() {
+                if (isSpinning) return;
+                
+                isSpinning = true;
+                document.getElementById('game-result').innerHTML = '<p>🎰 Автоматический спин...</p>';
+                
+                // Генерация результата
+                const result = Math.floor(Math.random() * 37);
+                const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+                const resultColor = result === 0 ? 'green' : (redNumbers.includes(result) ? 'red' : 'black');
+                
+                // Расчет угла поворота для остановки на нужном числе
+                const segmentAngle = 360 / 37;
+                const targetAngle = result * segmentAngle;
+                const spinRotations = 5; // 5 полных оборотов
+                const finalAngle = (spinRotations * 360) + (360 - targetAngle);
+                
+                // Анимация вращения
+                const wheel = document.getElementById('wheel');
+                wheel.style.setProperty('--spin-degrees', finalAngle + 'deg');
+                wheel.classList.add('spinning');
+                
+                setTimeout(function() {
+                    processSpinResult(result, resultColor);
+                    wheel.classList.remove('spinning');
+                    is
