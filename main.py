@@ -199,7 +199,7 @@ def game():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎰 European Roulette</title>
+    <title> European Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -313,14 +313,14 @@ def game():
 </head>
 <body>
     <div class="container">
-        <h1>🎰 ЕВРОПЕЙСКАЯ РУЛЕТКА</h1>
+        <h1> ЕВРОПЕЙСКАЯ РУЛЕТКА</h1>
         
         <div class="balance">
-            <h3>💰 Баланс: <span id="balance">1000</span> ⭐</h3>
+            <h3> Баланс: <span id="balance">1000</span> </h3>
         </div>
         
         <div class="timer">
-            <h4>⏰ До следующего спина:</h4>
+            <h4> До следующего спина:</h4>
             <div class="countdown" id="countdown">25</div>
         </div>
         
@@ -332,22 +332,22 @@ def game():
         </div>
         
         <div class="bet-system">
-            <h3>💸 Сделать ставку</h3>
-            <input type="number" id="bet-amount" class="bet-input" placeholder="Сумма ⭐" min="1" max="1000" value="10">
+            <h3> Сделать ставку</h3>
+            <input type="number" id="bet-amount" class="bet-input" placeholder="Сумма " min="1" max="1000" value="10">
             <div class="bet-buttons">
-                <button class="bet-btn bet-red" onclick="placeBet('red')">🔴 КРАСНОЕ<br>×2</button>
-                <button class="bet-btn bet-black" onclick="placeBet('black')">⚫ ЧЁРНОЕ<br>×2</button>
-                <button class="bet-btn bet-green" onclick="placeBet('green')">🟢 ЗЕЛЁНОЕ<br>×36</button>
+                <button class="bet-btn bet-red" onclick="placeBet('red')"> КРАСНОЕ<br>×2</button>
+                <button class="bet-btn bet-black" onclick="placeBet('black')"> ЧЁРНОЕ<br>×2</button>
+                <button class="bet-btn bet-green" onclick="placeBet('green')"> ЗЕЛЁНОЕ<br>×36</button>
             </div>
         </div>
         
         <div class="current-bets" id="current-bets" style="display: none;">
-            <h4>🎲 Текущие ставки:</h4>
+            <h4> Текущие ставки:</h4>
             <div id="bet-list"></div>
         </div>
         
         <div class="result" id="game-result">
-            <p>🎯 Введите сумму ставки и выберите цвет!</p>
+            <p> Введите сумму ставки и выберите цвет!</p>
         </div>
     </div>
 
