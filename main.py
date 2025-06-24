@@ -295,7 +295,7 @@ def run_bot():
         application.run_polling()
     except Exception as e:
         print(f"❌ Ошибка бота: {e}")
-        @app.route('/game')
+@app.route('/game')
 def game():
     return '''
     <!DOCTYPE html>
@@ -317,25 +317,12 @@ def game():
                 width: 200px; height: 200px; border-radius: 50%; 
                 margin: 20px auto; position: relative;
                 background: conic-gradient(
-                    #ff0000 0deg 9.73deg, #000000 9.73deg 19.46deg,
-                    #ff0000 19.46deg 29.19deg, #000000 29.19deg 38.92deg,
-                    #ff0000 38.92deg 48.65deg, #000000 48.65deg 58.38deg,
-                    #ff0000 58.38deg 68.11deg, #000000 68.11deg 77.84deg,
-                    #ff0000 77.84deg 87.57deg, #000000 87.57deg 97.30deg,
-                    #00ff00 97.30deg 107.03deg,
-                    #000000 107.03deg 116.76deg, #ff0000 116.76deg 126.49deg,
-                    #000000 126.49deg 136.22deg, #ff0000 136.22deg 145.95deg,
-                    #000000 145.95deg 155.68deg, #ff0000 155.68deg 165.41deg,
-                    #000000 165.41deg 175.14deg, #ff0000 175.14deg 184.87deg,
-                    #000000 184.87deg 194.60deg, #ff0000 194.60deg 204.33deg,
-                    #000000 204.33deg 214.06deg, #ff0000 214.06deg 223.79deg,
-                    #000000 223.79deg 233.52deg, #ff0000 233.52deg 243.25deg,
-                    #000000 243.25deg 252.98deg, #ff0000 252.98deg 262.71deg,
-                    #000000 262.71deg 272.44deg, #ff0000 272.44deg 282.17deg,
-                    #000000 282.17deg 291.90deg, #ff0000 291.90deg 301.63deg,
-                    #000000 301.63deg 311.36deg, #ff0000 311.36deg 321.09deg,
-                    #000000 321.09deg 330.82deg, #ff0000 330.82deg 340.55deg,
-                    #000000 340.55deg 350.28deg, #ff0000 350.28deg 360deg
+                    #ff0000 0deg 20deg, #000000 20deg 40deg, #ff0000 40deg 60deg, 
+                    #000000 60deg 80deg, #ff0000 80deg 100deg, #00ff00 100deg 120deg,
+                    #000000 120deg 140deg, #ff0000 140deg 160deg, #000000 160deg 180deg,
+                    #ff0000 180deg 200deg, #000000 200deg 220deg, #ff0000 220deg 240deg,
+                    #000000 240deg 260deg, #ff0000 260deg 280deg, #000000 280deg 300deg,
+                    #ff0000 300deg 320deg, #000000 320deg 340deg, #ff0000 340deg 360deg
                 );
                 border: 5px solid gold; transition: transform 0.5s ease;
             }
@@ -371,12 +358,6 @@ def game():
             .spinning { animation: spin 3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
             @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
             .win-animation { animation: pulse 0.5s ease-in-out 3; }
-            @media (max-width: 480px) {
-                .container { padding: 10px; }
-                .roulette-wheel { width: 150px; height: 150px; }
-                .wheel-center { width: 30px; height: 30px; font-size: 14px; }
-                .bet-btn { padding: 12px; font-size: 12px; }
-            }
         </style>
     </head>
     <body>
@@ -392,24 +373,12 @@ def game():
             </div>
             
             <div class="bet-buttons">
-                <button class="bet-btn bet-red" onclick="placeBet('red', 50)">
-                    🔴 КРАСНОЕ ×2<br>50⭐
-                </button>
-                <button class="bet-btn bet-black" onclick="placeBet('black', 50)">
-                    ⚫ ЧЁРНОЕ ×2<br>50⭐
-                </button>
-                <button class="bet-btn bet-green" onclick="placeBet('green', 50)">
-                    🟢 ЗЕЛЁНОЕ ×36<br>50⭐
-                </button>
-                <button class="bet-btn bet-red" onclick="placeBet('red', 100)">
-                    🔴 КРАСНОЕ<br>100⭐
-                </button>
-                <button class="bet-btn bet-black" onclick="placeBet('black', 100)">
-                    ⚫ ЧЁРНОЕ<br>100⭐
-                </button>
-                <button class="bet-btn bet-green" onclick="placeBet('green', 100)">
-                    🟢 ЗЕЛЁНОЕ<br>100⭐
-                </button>
+                <button class="bet-btn bet-red" onclick="placeBet('red', 50)">🔴 КРАСНОЕ ×2<br>50⭐</button>
+                <button class="bet-btn bet-black" onclick="placeBet('black', 50)">⚫ ЧЁРНОЕ ×2<br>50⭐</button>
+                <button class="bet-btn bet-green" onclick="placeBet('green', 50)">🟢 ЗЕЛЁНОЕ ×36<br>50⭐</button>
+                <button class="bet-btn bet-red" onclick="placeBet('red', 100)">🔴 КРАСНОЕ<br>100⭐</button>
+                <button class="bet-btn bet-black" onclick="placeBet('black', 100)">⚫ ЧЁРНОЕ<br>100⭐</button>
+                <button class="bet-btn bet-green" onclick="placeBet('green', 100)">🟢 ЗЕЛЁНОЕ<br>100⭐</button>
             </div>
             
             <div class="result" id="game-result">
@@ -422,93 +391,65 @@ def game():
             let isSpinning = false;
             let userId = null;
 
-            let tg = null;
             if (window.Telegram && window.Telegram.WebApp) {
-                tg = window.Telegram.WebApp;
+                const tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
                 
                 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                     userId = tg.initDataUnsafe.user.id;
-                    loadUserBalance();
-                }
-            }
-
-            async function loadUserBalance() {
-                if (!userId) return;
-                try {
-                    const response = await fetch(`/api/user/${userId}`);
-                    if (response.ok) {
-                        const userData = await response.json();
-                        updateBalance(userData.balance);
-                    }
-                } catch (error) {
-                    console.error('Ошибка загрузки баланса:', error);
-                }
-            }
-
-            function updateBalance(newBalance) {
-                userBalance = newBalance;
-                const balanceElement = document.getElementById('balance');
-                if (balanceElement) {
-                    balanceElement.textContent = newBalance;
-                    balanceElement.style.transform = 'scale(1.2)';
-                    balanceElement.style.color = '#FFD700';
-                    setTimeout(() => {
-                        balanceElement.style.transform = 'scale(1)';
-                        balanceElement.style.color = 'inherit';
-                    }, 300);
                 }
             }
 
             function placeBet(color, amount) {
-                console.log(`🎯 Ставка: ${color} - ${amount}⭐`);
-                
                 if (isSpinning) {
-                    showResult("⏳ Рулетка уже крутится!");
+                    document.getElementById('game-result').innerHTML = '<p>⏳ Рулетка уже крутится!</p>';
                     return;
                 }
                 
                 if (userBalance < amount) {
-                    showResult("❌ Недостаточно средств!");
-                    vibratePhone();
+                    document.getElementById('game-result').innerHTML = '<p>❌ Недостаточно средств!</p>';
                     return;
                 }
                 
                 isSpinning = true;
-                disableAllButtons();
-                showResult("🎰 Крутим рулетку...");
+                document.getElementById('game-result').innerHTML = '<p>🎰 Крутим рулетку...</p>';
+                document.getElementById('wheel').classList.add('spinning');
                 
-                spinRoulette(color, amount);
+                setTimeout(() => {
+                    const result = Math.floor(Math.random() * 37);
+                    const resultColor = result === 0 ? 'green' : ([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(result) ? 'red' : 'black');
+                    const won = color === resultColor;
+                    const winnings = won ? (resultColor === 'green' ? amount * 36 : amount * 2) : 0;
+                    
+                    document.getElementById('result-number').textContent = result;
+                    document.getElementById('wheel').classList.remove('spinning');
+                    
+                    if (won) {
+                        userBalance += winnings - amount;
+                        document.getElementById('game-result').innerHTML = `<p>🎉 ВЫИГРЫШ! ${resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢')} ${result}<br>💰 +${winnings}⭐</p>`;
+                    } else {
+                        userBalance -= amount;
+                        document.getElementById('game-result').innerHTML = `<p>😔 Проигрыш ${resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢')} ${result}<br>📉 -${amount}⭐</p>`;
+                    }
+                    
+                    document.getElementById('balance').textContent = userBalance;
+                    isSpinning = false;
+                }, 3000);
             }
+        </script>
+    </body>
+    </html>
+    '''
 
-            function spinRoulette(betColor, betAmount) {
-                const wheel = document.getElementById('wheel');
-                if (wheel) wheel.classList.add('spinning');
-                
-                fetch('/api/spin', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        bet_type: betColor,
-                        bet_amount: betAmount
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    setTimeout(() => processSpinResult(data, betColor, betAmount), 3000);
-                })
-                .catch(error => {
-                    console.error('API Error:', error);
-                    setTimeout(() => {
-                        const localResult = generateLocalResult(betColor, betAmount);
-                        processSpinResult(localResult, betColor, betAmount);
-                    }, 3000);
-                });
-            }
+# Инициализация и запуск
+init_db()
 
-            function processSpinResult(data, betColor, betAmount) {
-                const wheel = document.getElementById('wheel');
-                const resultNumber
-        
+if BOT_TOKEN:
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=PORT, debug=False)
+
