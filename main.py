@@ -467,4 +467,150 @@ def game():
                 setTimeout(function() {
                     processSpinResult(result, resultColor);
                     wheel.classList.remove('spinning');
-                    is
+                    isSpinning = false;
+                }, 4000);
+            }
+
+            // Обработка результата спина
+            function processSpinResult(result, resultColor) {
+                document.getElementById('result-number').textContent = result;
+                
+                // Обработка ставок
+                let totalWinnings = 0;
+                let totalLosses = 0;
+                let resultMessage = '';
+                
+                currentBets.forEach(bet => {
+                    const won = bet.type === resultColor;
+                    if (won) {
+                        const winAmount = bet.type === 'green' ? bet.amount * 36 : bet.amount * 2;
+                        totalWinnings += winAmount;
+                        userBalance += winAmount;
+                    } else {
+                        totalLosses += bet.amount;
+                        userBalance -= bet.amount;
+                    }
+                });
+                
+                // Отображение результата
+                const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
+                
+                if (currentBets.length > 0) {
+                    if (totalWinnings > 0) {
+                        resultMessage = `🎉 ВЫИГРЫШ! ${colorEmoji} ${result}<br>💰 +${totalWinnings}⭐`;
+                        document.getElementById('game-result').classList.add('win-animation');
+                        setTimeout(() => document.getElementById('game-result').classList.remove('win-animation'), 2000);
+                    } else {
+                        resultMessage = `😔 Проигрыш ${colorEmoji} ${result}<br>📉 -${totalLosses}⭐`;
+                    }
+                } else {
+                    resultMessage = `🎯 Выпало: ${colorEmoji} ${result}<br>💡 Делайте ставки!`;
+                }
+                
+                document.getElementById('game-result').innerHTML = `<p>${resultMessage}</p>`;
+                document.getElementById('balance').textContent = userBalance;
+                
+                // Очистка ставок после спина
+                currentBets = [];
+                updateBetButtons();
+            }
+
+            // Размещение ставки
+            function placeBet(color) {
+                const betAmountInput = document.getElementById('bet-amount');
+                const betAmount = parseInt(betAmountInput.value) || 0;
+                
+                if (betAmount <= 0) {
+                    showMessage('❌ Введите корректную сумму ставки!');
+                    return;
+                }
+                
+                if (betAmount > userBalance) {
+                    showMessage('❌ Недостаточно средств!');
+                    return;
+                }
+                
+                if (betAmount > 1000) {
+                    showMessage('❌ Максимальная ставка: 1000⭐');
+                    return;
+                }
+                
+                // Проверка на дублирование ставки того же типа
+                const existingBet = currentBets.find(bet => bet.type === color);
+                if (existingBet) {
+                    existingBet.amount += betAmount;
+                    showMessage(`✅ Ставка увеличена: ${color.toUpperCase()} ${existingBet.amount}⭐`);
+                } else {
+                    currentBets.push({ type: color, amount: betAmount });
+                    showMessage(`✅ Ставка размещена: ${color.toUpperCase()} ${betAmount}⭐`);
+                }
+                
+                updateBetButtons();
+                betAmountInput.value = '10'; // Сброс к дефолтной ставке
+            }
+
+            // Обновление кнопок ставок
+            function updateBetButtons() {
+                const totalBetAmount = currentBets.reduce((sum, bet) => sum + bet.amount, 0);
+                const availableBalance = userBalance - totalBetAmount;
+                
+                const buttons = document.querySelectorAll('.bet-btn');
+                buttons.forEach(button => {
+                    const betAmount = parseInt(document.getElementById('bet-amount').value) || 0;
+                    button.disabled = betAmount > availableBalance || betAmount <= 0;
+                });
+                
+                // Показать текущие ставки
+                if (currentBets.length > 0) {
+                    let betsText = '🎲 Ваши ставки: ';
+                    currentBets.forEach(bet => {
+                        const colorEmoji = bet.type === 'red' ? '🔴' : (bet.type === 'black' ? '⚫' : '🟢');
+                        betsText += `${colorEmoji}${bet.amount}⭐ `;
+                    });
+                    document.getElementById('game-result').innerHTML = `<p>${betsText}</p>`;
+                }
+            }
+
+            // Показать сообщение
+            function showMessage(message) {
+                const resultEl = document.getElementById('game-result');
+                resultEl.innerHTML = `<p>${message}</p>`;
+                
+                // Автоочистка сообщения через 3 секунды
+                setTimeout(() => {
+                    if (resultEl.innerHTML.includes(message)) {
+                        if (currentBets.length > 0) {
+                            updateBetButtons();
+                        } else {
+                            resultEl.innerHTML = '<p>🎯 Введите сумму ставки и выберите цвет!</p>';
+                        }
+                    }
+                }, 3000);
+            }
+
+            // Обновление счетчика при вводе суммы
+            document.getElementById('bet-amount').addEventListener('input', function() {
+                updateBetButtons();
+            });
+
+            // Инициализация игры
+            function initGame() {
+                updateBetButtons();
+                startGameTimer();
+                showMessage('🎰 Игра началась! Автоспин каждые 25 секунд');
+            }
+
+            // Запуск игры при загрузке страницы
+            window.addEventListener('load', function() {
+                setTimeout(initGame, 1000);
+            });
+
+            // Остановка таймеров при закрытии страницы
+            window.addEventListener('beforeunload', function() {
+                if (countdownInterval) clearInterval(countdownInterval);
+                if (gameInterval) clearInterval(gameInterval);
+            });
+        </script>
+    </body>
+    </html>
+    '''
