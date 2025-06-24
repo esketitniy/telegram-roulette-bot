@@ -297,7 +297,7 @@ def run_bot():
         print(f"❌ Ошибка бота: {e}")
 @app.route('/game')
 def game():
-    return '''
+    html_content = """
     <!DOCTYPE html>
     <html lang="ru">
     <head>
@@ -308,7 +308,7 @@ def game():
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif;
                 background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
                 color: white; min-height: 100vh; padding: 20px;
             }
@@ -416,9 +416,10 @@ def game():
                 document.getElementById('game-result').innerHTML = '<p>🎰 Крутим рулетку...</p>';
                 document.getElementById('wheel').classList.add('spinning');
                 
-                setTimeout(() => {
+                setTimeout(function() {
                     const result = Math.floor(Math.random() * 37);
-                    const resultColor = result === 0 ? 'green' : ([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(result) ? 'red' : 'black');
+                    const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+                    const resultColor = result === 0 ? 'green' : (redNumbers.includes(result) ? 'red' : 'black');
                     const won = color === resultColor;
                     const winnings = won ? (resultColor === 'green' ? amount * 36 : amount * 2) : 0;
                     
@@ -427,10 +428,12 @@ def game():
                     
                     if (won) {
                         userBalance += winnings - amount;
-                        document.getElementById('game-result').innerHTML = `<p>🎉 ВЫИГРЫШ! ${resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢')} ${result}<br>💰 +${winnings}⭐</p>`;
+                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
+                        document.getElementById('game-result').innerHTML = '<p>🎉 ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br>💰 +' + winnings + '⭐</p>';
                     } else {
                         userBalance -= amount;
-                        document.getElementById('game-result').innerHTML = `<p>😔 Проигрыш ${resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢')} ${result}<br>📉 -${amount}⭐</p>`;
+                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
+                        document.getElementById('game-result').innerHTML = '<p>😔 Проигрыш ' + colorEmoji + ' ' + result + '<br>📉 -' + amount + '⭐</p>';
                     }
                     
                     document.getElementById('balance').textContent = userBalance;
@@ -440,16 +443,5 @@ def game():
         </script>
     </body>
     </html>
-    '''
-
-# Инициализация и запуск
-init_db()
-
-if BOT_TOKEN:
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT, debug=False)
-
+    """
+    return html_content
