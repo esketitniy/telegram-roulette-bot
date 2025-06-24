@@ -1,205 +1,60 @@
 import os
-import random
 import sqlite3
 import threading
-from flask import Flask, jsonify, request
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from flask import Flask, render_template_string, request, jsonify
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import asyncio
+import logging
 
-# Конфигурация
+logging.basicConfig(level=logging.INFO)
+
+app = Flask(__name__)
 BOT_TOKEN = os.getenv('BOT_TOKEN')
-WEB_APP_URL = os.getenv('WEB_APP_URL', 'https://telegram-casino.onrender.com')
 PORT = int(os.getenv('PORT', 5000))
 
-print(f"✅ Bot Token: {'НАЙДЕН' if BOT_TOKEN else 'НЕ НАЙДЕН'}")
-print(f"✅ Web App URL: {WEB_APP_URL}")
-print(f"✅ Port: {PORT}")
-
-# Flask приложение
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'telegram-casino-secret')
-
-# Рулетка - европейская версия
-ROULETTE_NUMBERS = {
-    0: "green",
-    1: "red", 2: "black", 3: "red", 4: "black", 5: "red", 6: "black",
-    7: "red", 8: "black", 9: "red", 10: "black", 11: "black", 12: "red",
-    13: "black", 14: "red", 15: "black", 16: "red", 17: "black", 18: "red",
-    19: "red", 20: "black", 21: "red", 22: "black", 23: "red", 24: "black",
-    25: "red", 26: "black", 27: "red", 28: "black", 29: "black", 30: "red",
-    31: "black", 32: "red", 33: "black", 34: "red", 35: "black", 36: "red"
-}
-
-# База данных
 def init_db():
-    try:
-        conn = sqlite3.connect('casino.db')
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                balance INTEGER DEFAULT 1000,
-                total_games INTEGER DEFAULT 0,
-                total_won INTEGER DEFAULT 0,
-                total_lost INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS games (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                bet_type TEXT,
-                bet_amount INTEGER,
-                result_number INTEGER,
-                result_color TEXT,
-                won BOOLEAN,
-                winnings INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
-        print("✅ База данных инициализирована")
-    except Exception as e:
-        print(f"❌ Ошибка БД: {e}")
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            telegram_id INTEGER UNIQUE,
+            username TEXT,
+            balance INTEGER DEFAULT 1000
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-def get_user(user_id):
-    try:
-        conn = sqlite3.connect('casino.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+def get_user(telegram_id):
+    conn = sqlite3.connect('casino.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
+    user = cursor.fetchone()
+    if not user:
+        cursor.execute('INSERT INTO users (telegram_id, balance) VALUES (?, ?)', (telegram_id, 1000))
+        conn.commit()
+        cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
         user = cursor.fetchone()
-        conn.close()
-        return user
-    except:
-        return None
+    conn.close()
+    return user
 
-def create_user(user_id, username, first_name):
-    try:
-        conn = sqlite3.connect('casino.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT OR IGNORE INTO users (user_id, username, first_name)
-            VALUES (?, ?, ?)
-        ''', (user_id, username, first_name))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Ошибка создания пользователя: {e}")
-
-def save_game(user_id, bet_type, bet_amount, result_number, result_color, won, winnings):
-    try:
-        conn = sqlite3.connect('casino.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO games (user_id, bet_type, bet_amount, result_number, result_color, won, winnings)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (user_id, bet_type, bet_amount, result_number, result_color, won, winnings))
-        
-        if won:
-            cursor.execute('UPDATE users SET total_games = total_games + 1, total_won = total_won + ?, balance = balance + ? WHERE user_id = ?', (winnings, winnings - bet_amount, user_id))
-        else:
-            cursor.execute('UPDATE users SET total_games = total_games + 1, total_lost = total_lost + ?, balance = balance - ? WHERE user_id = ?', (bet_amount, bet_amount, user_id))
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Ошибка сохранения игры: {e}")
-
-# Flask routes
 @app.route('/')
 def index():
     return '''
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>🎰 Telegram Casino</title>
-        <script src="https://telegram.org/js/telegram-web-app.js"></script>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                color: white; min-height: 100vh; display: flex;
-                align-items: center; justify-content: center; padding: 20px;
-            }
-            .container { 
-                text-align: center; max-width: 400px; padding: 40px 20px;
-                background: rgba(255, 255, 255, 0.1); border-radius: 20px;
-                backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
-            }
-            .logo { font-size: 4em; margin-bottom: 20px; animation: pulse 2s infinite; }
-            @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-            h1 { font-size: 2.5em; margin-bottom: 20px; 
-                 background: linear-gradient(45deg, #FFD700, #FFA500);
-                 -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
-                 background-clip: text; }
-            .subtitle { font-size: 1.2em; margin-bottom: 30px; opacity: 0.9; }
-            .features { list-style: none; margin-bottom: 30px; }
-            .features li { padding: 10px 0; font-size: 1.1em; }
-            .cta-button { 
-                background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white;
-                padding: 15px 30px; border: none; border-radius: 50px;
-                font-size: 1.2em; font-weight: bold; cursor: pointer;
-                transition: transform 0.3s; text-decoration: none; display: inline-block;
-                margin: 10px;
-            }
-            .cta-button:hover { transform: translateY(-2px); }
-            .status { margin-top: 20px; padding: 10px; 
-                     background: rgba(0, 255, 0, 0.2); border-radius: 10px;
-                     border: 1px solid rgba(0, 255, 0, 0.3); }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="logo">🎰</div>
-            <h1>PREMIUM CASINO</h1>
-            <p class="subtitle">Премиум казино в Telegram</p>
-            
-            <ul class="features">
-                <li>🔥 Европейская рулетка</li>
-                <li>💎 Виртуальные звезды</li>
-                <li>⚡ Мгновенные результаты</li>
-                <li>🎯 Честная игра</li>
-            </ul>
-            
-            <a href="/game" class="cta-button">🎮 ИГРАТЬ СЕЙЧАС</a>
-            <a href="/health" class="cta-button" style="background: linear-gradient(45deg, #28a745, #20c997);">📊 СТАТУС</a>
-            
-            <div class="status">✅ Сервер работает</div>
-        </div>
-
-        <script>
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.ready();
-                tg.expand();
-                
-                if (tg.themeParams.bg_color) {
-                    document.body.style.background = 'linear-gradient(135deg, ' + tg.themeParams.bg_color + ' 0%, #2a5298 100%)';
-                }
-            }
-        </script>
-    </body>
-    </html>
+    <h1>🎰 Casino Bot</h1>
+    <p>Bot is running!</p>
+    <a href="/game">Play Game</a>
     '''
-
-@app.route('/game')
+    @app.route('/game')
 def game():
-    return """<!DOCTYPE html>"""
+    return """<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> European Roulette</title>
+    <title>European Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -262,66 +117,38 @@ def game():
             font-weight: bold; cursor: pointer; transition: all 0.3s; text-align: center;
         }
         .bet-btn:hover { transform: translateY(-2px); }
-        .bet-btn:active { transform: scale(0.95);}
-        .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .bet-red { 
-            background: linear-gradient(45deg, #ff4444, #cc0000); color: white; 
-            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.4);
-        }
-        .bet-black { 
-            background: linear-gradient(45deg, #333333, #000000); color: white; 
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-        }
-        .bet-green { 
-            background: linear-gradient(45deg, #00aa00, #006600); color: white; 
-            box-shadow: 0 4px 15px rgba(0, 170, 0, 0.4);
-        }
+        .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .bet-red { background: linear-gradient(45deg, #ff4444, #cc0000); color: white; }
+        .bet-black { background: linear-gradient(45deg, #333333, #000000); color: white; }
+        .bet-green { background: linear-gradient(45deg, #00aa00, #006600); color: white; }
         .balance, .result, .timer { 
             background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; 
             margin: 15px 0; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
         }
         .balance h3 { margin: 0; color: #FFD700; font-size: 1.4em; }
         .result { min-height: 60px; display: flex; align-items: center; justify-content: center; }
-        .timer { 
-            background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
-            border: 2px solid rgba(255, 215, 0, 0.5);
-        }
+        .timer { background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2)); }
         .timer h4 { margin: 0; color: #FFD700; }
         .countdown { font-size: 2em; font-weight: bold; color: #fff; margin: 10px 0; }
-        .current-bets {
-            background: rgba(255, 215, 0, 0.1); padding: 10px; border-radius: 10px; 
-            margin: 10px 0; border: 1px solid rgba(255, 215, 0, 0.3);
-        }
-        .bet-indicator {
-            display: inline-block; padding: 5px 10px; margin: 2px;
-            background: rgba(255, 255, 255, 0.2); border-radius: 15px;
-            font-size: 12px; font-weight: bold;
-        }
-        @keyframes spin { 
-            from { transform: rotate(0deg); } 
-            to { transform: rotate(var(--spin-degrees, 1800deg)); } 
-        }
+        .current-bets { background: rgba(255, 215, 0, 0.1); padding: 10px; border-radius: 10px; margin: 10px 0; }
+        .bet-indicator { display: inline-block; padding: 5px 10px; margin: 2px; background: rgba(255, 255, 255, 0.2); border-radius: 15px; font-size: 12px; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(var(--spin-degrees, 1800deg)); } }
         .spinning { animation: spin 4s cubic-bezier(0.25, 0.1, 0.25, 1); }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .win-animation { animation: pulse 0.6s ease-in-out 3; }
-        @keyframes countdown-pulse { 
-            0%, 100% { transform: scale(1); color: #fff; } 
-            50% { transform: scale(1.1); color: #ff4444; } 
-        }
-        .countdown-warning { animation: countdown-pulse 1s infinite; }
+        .countdown-warning { animation: pulse 1s infinite; color: #ff4444; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1> ЕВРОПЕЙСКАЯ РУЛЕТКА</h1>
+        <h1>EUROPEAN ROULETTE</h1>
         
         <div class="balance">
-            <h3> Баланс: <span id="balance">1000</span> </h3>
+            <h3>Balance: <span id="balance">1000</span> stars</h3>
         </div>
         
         <div class="timer">
-            <h4> До следующего спина:</h4>
-            <div class="countdown" id="countdown">25</div>
+            <h4>Next spin: <span class="countdown" id="countdown">25</span>s</h4>
         </div>
         
         <div class="roulette-container">
@@ -332,176 +159,107 @@ def game():
         </div>
         
         <div class="bet-system">
-            <h3> Сделать ставку</h3>
-            <input type="number" id="bet-amount" class="bet-input" placeholder="Сумма " min="1" max="1000" value="10">
+            <h3>Place Bet</h3>
+            <input type="number" id="bet-amount" class="bet-input" placeholder="Amount" min="1" max="1000" value="10">
             <div class="bet-buttons">
-                <button class="bet-btn bet-red" onclick="placeBet('red')"> КРАСНОЕ<br>×2</button>
-                <button class="bet-btn bet-black" onclick="placeBet('black')"> ЧЁРНОЕ<br>×2</button>
-                <button class="bet-btn bet-green" onclick="placeBet('green')"> ЗЕЛЁНОЕ<br>×36</button>
+                <button class="bet-btn bet-red" onclick="placeBet('red')">RED x2</button>
+                <button class="bet-btn bet-black" onclick="placeBet('black')">BLACK x2</button>
+                <button class="bet-btn bet-green" onclick="placeBet('green')">GREEN x36</button>
             </div>
         </div>
         
         <div class="current-bets" id="current-bets" style="display: none;">
-            <h4> Текущие ставки:</h4>
+            <h4>Current Bets:</h4>
             <div id="bet-list"></div>
         </div>
         
         <div class="result" id="game-result">
-            <p> Введите сумму ставки и выберите цвет!</p>
+            <p>Place your bet!</p>
         </div>
     </div>
 
     <script>
-        let userBalance = 1000;
-        let isSpinning = false;
-        let userId = null;
-        let currentBets = [];
-        let countdownTimer = 25;
-        let countdownInterval;
+        let userBalance = 1000, currentBets = [], countdownTimer = 25, isSpinning = false;
 
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                userId = tg.initDataUnsafe.user.id;
-            }
-        }
-
-        function startGameTimer() {
-            countdownInterval = setInterval(function() {
+        function startTimer() {
+            setInterval(() => {
                 countdownTimer--;
-                const countdownEl = document.getElementById('countdown');
-                countdownEl.textContent = countdownTimer;
-                
-                if (countdownTimer <= 5) {
-                    countdownEl.classList.add('countdown-warning');
-                } else {
-                    countdownEl.classList.remove('countdown-warning');
-                }
-                
-                if (countdownTimer <= 0) {
-                    autoSpin();
-                    countdownTimer = 25;
-                }
+                const el = document.getElementById('countdown');
+                el.textContent = countdownTimer;
+                el.className = countdownTimer <= 5 ? 'countdown countdown-warning' : 'countdown';
+                if (countdownTimer <= 0) { autoSpin(); countdownTimer = 25; }
             }, 1000);
         }
 
         function autoSpin() {
             if (isSpinning) return;
-            
             isSpinning = true;
-            document.getElementById('game-result').innerHTML = '<p> Автоматический спин...</p>';
-            
             const result = Math.floor(Math.random() * 37);
-            const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-            const resultColor = result === 0 ? 'green' : (redNumbers.includes(result) ? 'red' : 'black');
-            
-            const segmentAngle = 360 / 37;
-            const targetAngle = result * segmentAngle;
-            const spinRotations = 5;
-            const finalAngle = (spinRotations * 360) + (360 - targetAngle);
+            const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+            const color = result === 0 ? 'green' : (reds.includes(result) ? 'red' : 'black');
             
             const wheel = document.getElementById('wheel');
-            wheel.style.setProperty('--spin-degrees', finalAngle + 'deg');
+            wheel.style.setProperty('--spin-degrees', (5 * 360 + result * 10) + 'deg');
             wheel.classList.add('spinning');
             
-            setTimeout(function() {
-                processSpinResult(result, resultColor);
+            setTimeout(() => {
+                document.getElementById('result-number').textContent = result;
                 wheel.classList.remove('spinning');
+                
+                let winnings = 0, losses = 0;
+                currentBets.forEach(bet => {
+                    if (bet.type === color) {
+                        const win = bet.type === 'green' ? bet.amount * 36 : bet.amount * 2;
+                        winnings += win; userBalance += win;
+                    } else {
+                        losses += bet.amount; userBalance -= bet.amount;
+                    }
+                });
+                
+                const emoji = color === 'red' ? 'RED' : (color === 'black' ? 'BLACK' : 'GREEN');
+                const msg = currentBets.length > 0 ? 
+                    (winnings > 0 ? `WIN! ${emoji} ${result} (+${winnings} stars)` : `LOSE ${emoji} ${result} (-${losses} stars)`) :
+                    `Result: ${emoji} ${result}`;
+                
+                document.getElementById('game-result').innerHTML = `<p>${msg}</p>`;
+                document.getElementById('balance').textContent = userBalance;
+                currentBets = []; updateDisplay();
                 isSpinning = false;
             }, 4000);
         }
 
-        function processSpinResult(result, resultColor) {
-            document.getElementById('result-number').textContent = result;
-            
-            let totalWinnings = 0;
-            let totalLosses = 0;
-            
-            currentBets.forEach(function(bet) {
-                const won = bet.type === resultColor;
-                if (won) {
-                    const winAmount = bet.type === 'green' ? bet.amount * 36 : bet.amount * 2;
-                    totalWinnings += winAmount;
-                    userBalance += winAmount;
-                } else {
-                    totalLosses += bet.amount;
-                    userBalance -= bet.amount;
-                }
-            });
-            
-            const colorEmoji = resultColor === 'red' ?  : (resultColor === 'black' ?  : );
-            let resultMessage = '';
-            
-            if (currentBets.length > 0) {
-                if (totalWinnings > 0) {
-                    resultMessage = ' ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br> +' + totalWinnings + '';
-                    document.getElementById('game-result').classList.add('win-animation');
-                    setTimeout(function() {
-                        document.getElementById('game-result').classList.remove('win-animation');
-                    }, 2000);
-                } else {
-                    resultMessage = ' Проигрыш ' + colorEmoji + ' ' + result + '<br> -' + totalLosses + '';
-                }
-            } else {
-                resultMessage = ' Выпало: ' + colorEmoji + ' ' + result + '<br> Делайте ставки!';
-            }
-            
-            document.getElementById('game-result').innerHTML = '<p>' + resultMessage + '</p>';
-            document.getElementById('balance').textContent = userBalance;
-            
-            currentBets = [];
-            updateBetDisplay();
-            updateBetButtons();
-        }
-
         function placeBet(color) {
-            const betAmountInput = document.getElementById('bet-amount');
-            const betAmount = parseInt(betAmountInput.value) || 0;
-            
-            if (betAmount <= 0) {
-                showMessage('❌ Введите корректную сумму ставки!');
+            const amount = parseInt(document.getElementById('bet-amount').value) || 0;
+            if (amount <= 0 || amount > userBalance || amount > 1000) {
+                document.getElementById('game-result').innerHTML = '<p>Invalid bet amount!</p>';
                 return;
             }
             
-            if (betAmount > userBalance) {
-                showMessage('❌ Недостаточно средств!');
-                return;
-            }
+            const existing = currentBets.find(b => b.type === color);
+            if (existing) existing.amount += amount;
+            else currentBets.push({type: color, amount});
             
-            if (betAmount > 1000) {
-                showMessage('❌ Максимальная ставка: 1000⭐');
-                return;
-            }
-            
-            const totalCurrentBets = currentBets.reduce(function(sum, bet) {
-                return sum + bet.amount;
-            }, 0);
-            
-            if (totalCurrentBets + betAmount > userBalance) {
-                showMessage('❌ Недостаточно средств для всех ставок!');
-                return;
-            }
-            
-            const existingBetIndex = currentBets.findIndex(function(bet) {
-                return bet.type === color;
-            });
-            
-            if (existingBetIndex !== -1) {
-                currentBets[existingBetIndex].amount += betAmount;
-                showMessage('✅ Ставка увеличена: ' + color.toUpperCase() + ' ' + currentBets[existingBetIndex].amount + '⭐');
-            } else {
-                currentBets.push({ type: color, amount: betAmount });
-                showMessage('✅ Ставка размещена: ' + color.toUpperCase() + ' ' + betAmount + '⭐');
-            }
-            
-            updateBetDisplay();
-            updateBetButtons();
-            betAmountInput.value = '10';
+            document.getElementById('game-result').innerHTML = `<p>Bet placed: ${color.toUpperCase()} ${amount} stars</p>`;
+            updateDisplay();
         }
 
-        function updateBetDisplay() {
+        function updateDisplay() {
+            const div = document.getElementById('current-bets');
+            const list = document.getElementById('bet-list');
+            if (currentBets.length > 0) {
+                div.style.display = 'block';
+                list.innerHTML = currentBets.map(bet => {
+                    const colorName = bet.type === 'red' ? 'RED' : (bet.type === 'black' ? 'BLACK' : 'GREEN');
+                    return `<span class="bet-indicator">${colorName} ${bet.amount} stars</span>`;
+                }).join('');
+            } else div.style.display = 'none';
+        }
+
+        startTimer();
+    </script>
+</body>
+</html>"""
+    function updateBetDisplay() {
             const currentBetsDiv = document.getElementById('current-bets');
             const betListDiv = document.getElementById('bet-list');
             
@@ -510,10 +268,10 @@ def game():
                 betListDiv.innerHTML = '';
                 
                 currentBets.forEach(function(bet) {
-                    const colorEmoji = bet.type === 'red' ? '🔴' : (bet.type === 'black' ? '⚫' : '🟢');
+                    const colorName = bet.type === 'red' ? 'RED' : (bet.type === 'black' ? 'BLACK' : 'GREEN');
                     const betIndicator = document.createElement('span');
                     betIndicator.className = 'bet-indicator';
-                    betIndicator.innerHTML = colorEmoji + ' ' + bet.amount + '⭐';
+                    betIndicator.innerHTML = colorName + ' ' + bet.amount + ' stars';
                     betListDiv.appendChild(betIndicator);
                 });
             } else {
@@ -525,42 +283,109 @@ def game():
             const totalBetAmount = currentBets.reduce(function(sum, bet) {
                 return sum + bet.amount;
             }, 0);
-            const availableBalance
-            await update.message.reply_text(
-        f"🎰 Добро пожаловать в казино, {user.first_name}!\n\n💰 Ваш баланс: 1000 ⭐",
+            const availableBalance = userBalance - totalBetAmount;
+            
+            const buttons = document.querySelectorAll('.bet-btn');
+            const betAmountInput = document.getElementById('bet-amount');
+            const currentBetAmount = parseInt(betAmountInput.value) || 0;
+            
+            buttons.forEach(function(button) {
+                button.disabled = currentBetAmount > availableBalance || currentBetAmount <= 0 || isSpinning;
+            });
+            
+            betAmountInput.placeholder = 'Available: ' + availableBalance + ' stars';
+        }
+
+        function showMessage(message) {
+            const resultEl = document.getElementById('game-result');
+            resultEl.innerHTML = '<p>' + message + '</p>';
+            
+            setTimeout(function() {
+                if (resultEl.innerHTML.includes(message)) {
+                    if (currentBets.length > 0) {
+                        resultEl.innerHTML = '<p>Bets placed! Waiting for spin...</p>';
+                    } else {
+                        resultEl.innerHTML = '<p>Enter bet amount and choose color!</p>';
+                    }
+                }
+            }, 3000);
+        }
+
+        document.getElementById('bet-amount').addEventListener('input', function() {
+            updateBetButtons();
+        });
+
+        function initGame() {
+            updateBetButtons();
+            startGameTimer();
+            showMessage('Game started! Auto spin every 25 seconds');
+        }
+
+        window.addEventListener('load', function() {
+            setTimeout(initGame, 1000);
+        });
+
+        window.addEventListener('beforeunload', function() {
+            if (countdownInterval) clearInterval(countdownInterval);
+        });
+    </script>
+</body>
+</html>"""
+    return html_template
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update.effective_user.id)
+    
+    keyboard = [
+        [InlineKeyboardButton("🎰 Play Roulette", web_app={"url": "https://your-app-name.onrender.com/game"})],
+        [InlineKeyboardButton("💰 Balance", callback_data='balance')],
+        [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        f"🎰 Welcome to Casino Bot!\n\n"
+        f"Your balance: {user[3]} stars\n\n"
+        f"Choose an option:",
         reply_markup=reply_markup
     )
 
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    if query.data == "balance":
-        user_data = get_user(query.from_user.id)
-        balance = user_data[3] if user_data else 1000
-        await query.edit_message_text(f"💰 Ваш баланс: {balance} ⭐")
+    if query.data == 'balance':
+        user = get_user(query.from_user.id)
+        await query.edit_message_text(
+            f"💰 Your current balance: {user[3]} stars\n\n"
+            f"Play roulette to win more stars!"
+        )
+    
+    elif query.data == 'help':
+        await query.edit_message_text(
+            "🎰 How to play:\n\n"
+            "1. Click 'Play Roulette' to open the game\n"
+            "2. Choose your bet amount (1-1000 stars)\n"
+            "3. Select RED (x2), BLACK (x2), or GREEN (x36)\n"
+            "4. Wait for the automatic spin every 25 seconds\n"
+            "5. Win or lose based on the result!\n\n"
+            "Good luck! 🍀"
+        )
 
 def run_bot():
-    if not BOT_TOKEN:
-        print("❌ BOT_TOKEN не найден")
-        return
+    application = Application.builder().token(BOT_TOKEN).build()
     
-    try:
-        application = Application.builder().token(BOT_TOKEN).build()
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CallbackQueryHandler(handle_callback))
-        print("🤖 Бот запущен!")
-        application.run_polling()
-    except Exception as e:
-        print(f"❌ Ошибка бота: {e}")
-
-# Инициализация и запуск
-init_db()
-
-if BOT_TOKEN:
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_callback))
+    
+    application.run_polling()
 
 if __name__ == '__main__':
+    init_db()
+    
+    if BOT_TOKEN:
+        bot_thread = threading.Thread(target=run_bot)
+        bot_thread.daemon = True
+        bot_thread.start()
+    
     app.run(host='0.0.0.0', port=PORT, debug=False)
