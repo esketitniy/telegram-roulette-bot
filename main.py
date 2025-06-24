@@ -31,7 +31,9 @@ ROULETTE_NUMBERS = {
     19: "red", 20: "black", 21: "red", 22: "black", 23: "red", 24: "black",
     25: "red", 26: "black", 27: "red", 28: "black", 29: "black", 30: "red",
     31: "black", 32: "red", 33: "black", 34: "red", 35: "black", 36: "red"
-}# База данных
+}
+
+# База данных
 def init_db():
     try:
         conn = sqlite3.connect('casino.db')
@@ -70,7 +72,6 @@ def init_db():
     except Exception as e:
         print(f"❌ Ошибка БД: {e}")
 
-# Функции БД
 def get_user(user_id):
     try:
         conn = sqlite3.connect('casino.db')
@@ -113,7 +114,8 @@ def save_game(user_id, bet_type, bet_amount, result_number, result_color, won, w
         conn.close()
     except Exception as e:
         print(f"Ошибка сохранения игры: {e}")
-        # Flask routes
+
+# Flask routes
 @app.route('/')
 def index():
     return '''
@@ -185,8 +187,156 @@ def index():
                 tg.expand();
                 
                 if (tg.themeParams.bg_color) {
-                    document.body.style.background = `linear-gradient(135deg, ${tg.themeParams.bg_color} 0%, #2a5298 100%)`;
+                    document.body.style.background = 'linear-gradient(135deg, ' + tg.themeParams.bg_color + ' 0%, #2a5298 100%)';
                 }
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/game')
+def game():
+    return '''
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🎰 European Roulette</title>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif;
+                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                color: white; min-height: 100vh; padding: 20px;
+            }
+            .container { max-width: 400px; margin: 0 auto; text-align: center; }
+            .roulette-wheel { 
+                width: 200px; height: 200px; border-radius: 50%; 
+                margin: 20px auto; position: relative;
+                background: conic-gradient(
+                    #ff0000 0deg 20deg, #000000 20deg 40deg, #ff0000 40deg 60deg, 
+                    #000000 60deg 80deg, #ff0000 80deg 100deg, #00ff00 100deg 120deg,
+                    #000000 120deg 140deg, #ff0000 140deg 160deg, #000000 160deg 180deg,
+                    #ff0000 180deg 200deg, #000000 200deg 220deg, #ff0000 220deg 240deg,
+                    #000000 240deg 260deg, #ff0000 260deg 280deg, #000000 280deg 300deg,
+                    #ff0000 300deg 320deg, #000000 320deg 340deg, #ff0000 340deg 360deg
+                );
+                border: 5px solid gold; transition: transform 0.5s ease;
+            }
+            .wheel-center { 
+                position: absolute; top: 50%; left: 50%; 
+                transform: translate(-50%, -50%); width: 40px; height: 40px; 
+                background: gold; border-radius: 50%; display: flex; 
+                align-items: center; justify-content: center; 
+                font-weight: bold; color: black; font-size: 16px;
+            }
+            .bet-buttons { 
+                display: grid; grid-template-columns: 1fr 1fr; gap: 10px; 
+                margin: 20px 0; max-width: 300px; margin-left: auto; margin-right: auto;
+            }
+            .bet-btn { 
+                padding: 15px; border: none; border-radius: 10px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+                transition: all 0.2s; text-align: center;
+            }
+            .bet-btn:active { transform: scale(0.95); }
+            .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            .bet-red { background: linear-gradient(45deg, #ff4444, #cc0000); color: white; }
+            .bet-black { background: linear-gradient(45deg, #333333, #000000); color: white; }
+            .bet-green { background: linear-gradient(45deg, #00aa00, #006600); color: white; }
+            .balance, .result { 
+                background: rgba(255, 255, 255, 0.1); padding: 15px;
+                border-radius: 10px; margin: 20px 0; backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .balance h3 { margin: 0; color: #FFD700; }
+            .result { min-height: 60px; display: flex; align-items: center; justify-content: center; }
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(1800deg); } }
+            .spinning { animation: spin 3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎰 ЕВРОПЕЙСКАЯ РУЛЕТКА</h1>
+            
+            <div class="balance">
+                <h3>💰 Баланс: <span id="balance">1000</span> ⭐</h3>
+            </div>
+            
+            <div class="roulette-wheel" id="wheel">
+                <div class="wheel-center" id="result-number">0</div>
+            </div>
+            
+            <div class="bet-buttons">
+                <button class="bet-btn bet-red" onclick="placeBet('red', 50)">🔴 КРАСНОЕ ×2<br>50⭐</button>
+                <button class="bet-btn bet-black" onclick="placeBet('black', 50)">⚫ ЧЁРНОЕ ×2<br>50⭐</button>
+                <button class="bet-btn bet-green" onclick="placeBet('green', 50)">🟢 ЗЕЛЁНОЕ ×36<br>50⭐</button>
+                <button class="bet-btn bet-red" onclick="placeBet('red', 100)">🔴 КРАСНОЕ<br>100⭐</button>
+                <button class="bet-btn bet-black" onclick="placeBet('black', 100)">⚫ ЧЁРНОЕ<br>100⭐</button>
+                <button class="bet-btn bet-green" onclick="placeBet('green',<button class="bet-btn bet-green" onclick="placeBet('green', 100)">🟢 ЗЕЛЁНОЕ<br>100⭐</button>
+            </div>
+            
+            <div class="result" id="game-result">
+                <p>🎯 Сделайте ставку для начала игры!</p>
+            </div>
+        </div>
+
+        <script>
+            let userBalance = 1000;
+            let isSpinning = false;
+            let userId = null;
+
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    userId = tg.initDataUnsafe.user.id;
+                }
+            }
+
+            function placeBet(color, amount) {
+                if (isSpinning) {
+                    document.getElementById('game-result').innerHTML = '<p>⏳ Рулетка уже крутится!</p>';
+                    return;
+                }
+                
+                if (userBalance < amount) {
+                    document.getElementById('game-result').innerHTML = '<p>❌ Недостаточно средств!</p>';
+                    return;
+                }
+                
+                isSpinning = true;
+                document.getElementById('game-result').innerHTML = '<p>🎰 Крутим рулетку...</p>';
+                document.getElementById('wheel').classList.add('spinning');
+                
+                setTimeout(function() {
+                    const result = Math.floor(Math.random() * 37);
+                    const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+                    const resultColor = result === 0 ? 'green' : (redNumbers.includes(result) ? 'red' : 'black');
+                    const won = color === resultColor;
+                    const winnings = won ? (resultColor === 'green' ? amount * 36 : amount * 2) : 0;
+                    
+                    document.getElementById('result-number').textContent = result;
+                    document.getElementById('wheel').classList.remove('spinning');
+                    
+                    if (won) {
+                        userBalance += winnings - amount;
+                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
+                        document.getElementById('game-result').innerHTML = '<p>🎉 ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br>💰 +' + winnings + '⭐</p>';
+                    } else {
+                        userBalance -= amount;
+                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
+                        document.getElementById('game-result').innerHTML = '<p>😔 Проигрыш ' + colorEmoji + ' ' + result + '<br>📉 -' + amount + '⭐</p>';
+                    }
+                    
+                    document.getElementById('balance').textContent = userBalance;
+                    isSpinning = false;
+                }, 3000);
             }
         </script>
     </body>
@@ -215,7 +365,8 @@ def get_user_info(user_id):
             'total_lost': user[6]
         })
     return jsonify({'error': 'User not found'}), 404
-    @app.route('/api/spin', methods=['POST'])
+
+@app.route('/api/spin', methods=['POST'])
 def spin_api():
     try:
         data = request.json
@@ -295,153 +446,14 @@ def run_bot():
         application.run_polling()
     except Exception as e:
         print(f"❌ Ошибка бота: {e}")
-@app.route('/game')
-def game():
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>🎰 European Roulette</title>
-        <script src="https://telegram.org/js/telegram-web-app.js"></script>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif;
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                color: white; min-height: 100vh; padding: 20px;
-            }
-            .container { max-width: 400px; margin: 0 auto; text-align: center; }
-            .roulette-wheel { 
-                width: 200px; height: 200px; border-radius: 50%; 
-                margin: 20px auto; position: relative;
-                background: conic-gradient(
-                    #ff0000 0deg 20deg, #000000 20deg 40deg, #ff0000 40deg 60deg, 
-                    #000000 60deg 80deg, #ff0000 80deg 100deg, #00ff00 100deg 120deg,
-                    #000000 120deg 140deg, #ff0000 140deg 160deg, #000000 160deg 180deg,
-                    #ff0000 180deg 200deg, #000000 200deg 220deg, #ff0000 220deg 240deg,
-                    #000000 240deg 260deg, #ff0000 260deg 280deg, #000000 280deg 300deg,
-                    #ff0000 300deg 320deg, #000000 320deg 340deg, #ff0000 340deg 360deg
-                );
-                border: 5px solid gold; transition: transform 0.5s ease;
-            }
-            .wheel-center { 
-                position: absolute; top: 50%; left: 50%; 
-                transform: translate(-50%, -50%); width: 40px; height: 40px; 
-                background: gold; border-radius: 50%; display: flex; 
-                align-items: center; justify-content: center; 
-                font-weight: bold; color: black; font-size: 16px;
-            }
-            .bet-buttons { 
-                display: grid; grid-template-columns: 1fr 1fr; gap: 10px; 
-                margin: 20px 0; max-width: 300px; margin-left: auto; margin-right: auto;
-            }
-            .bet-btn { 
-                padding: 15px; border: none; border-radius: 10px;
-                font-size: 14px; font-weight: bold; cursor: pointer;
-                transition: all 0.2s; text-align: center;
-            }
-            .bet-btn:active { transform: scale(0.95); }
-            .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-            .bet-red { background: linear-gradient(45deg, #ff4444, #cc0000); color: white; }
-            .bet-black { background: linear-gradient(45deg, #333333, #000000); color: white; }
-            .bet-green { background: linear-gradient(45deg, #00aa00, #006600); color: white; }
-            .balance, .result { 
-                background: rgba(255, 255, 255, 0.1); padding: 15px;
-                border-radius: 10px; margin: 20px 0; backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-            }
-            .balance h3 { margin: 0; color: #FFD700; }
-            .result { min-height: 60px; display: flex; align-items: center; justify-content: center; }
-            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(1800deg); } }
-            .spinning { animation: spin 3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-            @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-            .win-animation { animation: pulse 0.5s ease-in-out 3; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🎰 ЕВРОПЕЙСКАЯ РУЛЕТКА</h1>
-            
-            <div class="balance">
-                <h3>💰 Баланс: <span id="balance">1000</span> ⭐</h3>
-            </div>
-            
-            <div class="roulette-wheel" id="wheel">
-                <div class="wheel-center" id="result-number">0</div>
-            </div>
-            
-            <div class="bet-buttons">
-                <button class="bet-btn bet-red" onclick="placeBet('red', 50)">🔴 КРАСНОЕ ×2<br>50⭐</button>
-                <button class="bet-btn bet-black" onclick="placeBet('black', 50)">⚫ ЧЁРНОЕ ×2<br>50⭐</button>
-                <button class="bet-btn bet-green" onclick="placeBet('green', 50)">🟢 ЗЕЛЁНОЕ ×36<br>50⭐</button>
-                <button class="bet-btn bet-red" onclick="placeBet('red', 100)">🔴 КРАСНОЕ<br>100⭐</button>
-                <button class="bet-btn bet-black" onclick="placeBet('black', 100)">⚫ ЧЁРНОЕ<br>100⭐</button>
-                <button class="bet-btn bet-green" onclick="placeBet('green', 100)">🟢 ЗЕЛЁНОЕ<br>100⭐</button>
-            </div>
-            
-            <div class="result" id="game-result">
-                <p>🎯 Сделайте ставку для начала игры!</p>
-            </div>
-        </div>
 
-        <script>
-            let userBalance = 1000;
-            let isSpinning = false;
-            let userId = null;
+# Инициализация и запуск
+init_db()
 
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.ready();
-                tg.expand();
-                
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    userId = tg.initDataUnsafe.user.id;
-                }
-            }
+if BOT_TOKEN:
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
 
-            function placeBet(color, amount) {
-                if (isSpinning) {
-                    document.getElementById('game-result').innerHTML = '<p>⏳ Рулетка уже крутится!</p>';
-                    return;
-                }
-                
-                if (userBalance < amount) {
-                    document.getElementById('game-result').innerHTML = '<p>❌ Недостаточно средств!</p>';
-                    return;
-                }
-                
-                isSpinning = true;
-                document.getElementById('game-result').innerHTML = '<p>🎰 Крутим рулетку...</p>';
-                document.getElementById('wheel').classList.add('spinning');
-                
-                setTimeout(function() {
-                    const result = Math.floor(Math.random() * 37);
-                    const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-                    const resultColor = result === 0 ? 'green' : (redNumbers.includes(result) ? 'red' : 'black');
-                    const won = color === resultColor;
-                    const winnings = won ? (resultColor === 'green' ? amount * 36 : amount * 2) : 0;
-                    
-                    document.getElementById('result-number').textContent = result;
-                    document.getElementById('wheel').classList.remove('spinning');
-                    
-                    if (won) {
-                        userBalance += winnings - amount;
-                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
-                        document.getElementById('game-result').innerHTML = '<p>🎉 ВЫИГРЫШ! ' + colorEmoji + ' ' + result + '<br>💰 +' + winnings + '⭐</p>';
-                    } else {
-                        userBalance -= amount;
-                        const colorEmoji = resultColor === 'red' ? '🔴' : (resultColor === 'black' ? '⚫' : '🟢');
-                        document.getElementById('game-result').innerHTML = '<p>😔 Проигрыш ' + colorEmoji + ' ' + result + '<br>📉 -' + amount + '⭐</p>';
-                    }
-                    
-                    document.getElementById('balance').textContent = userBalance;
-                    isSpinning = false;
-                }, 3000);
-            }
-        </script>
-    </body>
-    </html>
-    """
-    return html_content
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=PORT, debug=False)
