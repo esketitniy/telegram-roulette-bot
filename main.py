@@ -50,8 +50,8 @@ def index():
     
 @app.route('/game')
 def game():
-    return """<!DOCTYPE html>
-<html lang="ru">
+    html_template = """<!DOCTYPE html>
+    <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -256,10 +256,12 @@ def game():
             } else div.style.display = 'none';
         }
 
-        startTimer();
+    startTimer();
     </script>
 </body>
 </html>"""
+    return html_template
+    
     function updateBetDisplay() {
             const currentBetsDiv = document.getElementById('current-bets');
             const betListDiv = document.getElementById('bet-list');
