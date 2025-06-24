@@ -47,6 +47,7 @@ def index():
     <p>Bot is running!</p>
     <a href="/game">Play Game</a>
     '''
+    
     @app.route('/game')
 def game():
     return """<!DOCTYPE html>
