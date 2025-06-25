@@ -1428,41 +1428,41 @@ def api_test():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/api/disk_info')
-def api_disk_info():
-    """Информация о диске и базе данных"""
+@app.route('/api/disk_check')
+def api_disk_check():
+    """Проверка прав доступа к диску"""
     try:
-        import shutil
-        
-        disk_mounted = os.path.exists('/data')
-        db_exists = os.path.exists(DB_PATH)
+        import stat
         
         info = {
-            'disk_mounted': disk_mounted,
-            'database_path': DB_PATH,
-            'database_exists': db_exists,
-            'using_persistent_storage': DB_PATH.startswith('/data')
+            'data_dir_exists': os.path.exists('/data'),
+            'db_path': DB_PATH,
+            'db_exists': os.path.exists(DB_PATH)
         }
         
-        if disk_mounted:
-            # Получаем информацию о диске
-            disk_usage = shutil.disk_usage('/data')
-            info['disk_total'] = disk_usage.total
-            info['disk_used'] = disk_usage.used
-            info['disk_free'] = disk_usage.free
+        if os.path.exists('/data'):
+            stat_info = os.stat('/data')
+            info['data_dir_permissions'] = oct(stat_info.st_mode)[-3:]
         
-        if db_exists:
-            # Размер базы данных
-            info['database_size'] = os.path.getsize(DB_PATH)
+        if os.path.exists(DB_PATH):
+            stat_info = os.stat(DB_PATH)
+            info['db_permissions'] = oct(stat_info.st_mode)[-3:]
+            info['db_size'] = os.path.getsize(DB_PATH)
+        
+        # Попробуем создать тестовый файл
+        try:
+            test_file = '/data/test_write.txt'
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            info['write_access'] = True
+        except:
+            info['write_access'] = False
         
         return jsonify(info)
         
     except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'disk_mounted': False,
-            'database_path': DB_PATH
-        })
+        return jsonify({'error': str(e)})
         
 # Telegram Bot функции
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
