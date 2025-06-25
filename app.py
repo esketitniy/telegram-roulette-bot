@@ -9,6 +9,17 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import random
 import json
 
+# Версия приложения
+APP_VERSION = "1.0.0"
+
+# Логирование
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Настройки
 BOT_TOKEN = os.getenv('BOT_TOKEN', 'YOUR_BOT_TOKEN')
 PORT = int(os.getenv('PORT', 5000))
