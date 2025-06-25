@@ -8,6 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import random
 import json
+import os
 
 # Версия приложения
 APP_VERSION = "1.0.0"
@@ -1462,9 +1463,8 @@ def cleanup_inactive_players():
             print(f"Cleanup error: {e}")
             time.sleep(60)
 
-if __name__ == '__main__':
-    print("🌐 Starting Online Casino Server...")
-    
+def init_background_services():
+    """Инициализация фоновых сервисов"""
     # Устанавливаем время запуска
     game_state['start_time'] = time.time()
     
@@ -1492,7 +1492,11 @@ if __name__ == '__main__':
         print("✅ Telegram bot started")
     else:
         print("⚠️  BOT_TOKEN not configured")
-    
-    # Запуск Flask сервера
+
+# Инициализация при импорте (для gunicorn)
+init_background_services()
+
+if __name__ == '__main__':
+    print("🌐 Starting Online Casino Server...")
     print(f"🚀 Starting Flask server on port {PORT}")
     app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
