@@ -1118,6 +1118,23 @@ def api_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/test')
+def api_test():
+    """Тестирование API"""
+    return jsonify({
+        'status': 'OK',
+        'endpoints': [
+            '/api/status',
+            '/api/check_registration',
+            '/api/register',
+            '/api/place_bet',
+            '/api/game_state',
+            '/api/players',
+            '/api/history'
+        ],
+        'timestamp': datetime.now().isoformat()
+    })
+
 # Telegram Bot функции
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id)
