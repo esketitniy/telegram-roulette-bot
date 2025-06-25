@@ -1462,7 +1462,10 @@ def cleanup_inactive_players():
         except Exception as e:
             print(f"Cleanup error: {e}")
             time.sleep(60)
-
+            
+if __name__ == '__main__':
+    print("🌐 Starting Online Casino Server...")
+    
 def init_background_services():
     """Инициализация фоновых сервисов"""
     # Устанавливаем время запуска
