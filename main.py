@@ -86,23 +86,192 @@ def init_db():
     conn.commit()
     conn.close()
 
-def get_user(telegram_id, create_if_not_exists=True):
-    conn = sqlite3.connect('casino_online.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
-    user = cursor.fetchone()
-    
-    if not user and create_if_not_exists:
+def get_user(telegram_id):
+    """Получение пользователя по Telegram ID с автоинициализацией БД"""
+    try:
+        conn = sqlite3.connect('casino_online.db')
+        cursor = conn.cursor()
+        
+        # Создаем таблицу если не существует
         cursor.execute('''
-            INSERT INTO users (telegram_id, username, display_name, is_registered) 
-            VALUES (?, ?, ?, ?)
-        ''', (telegram_id, f'user_{telegram_id}', f'Player{telegram_id}', 0))
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                telegram_id INTEGER UNIQUE,
+                username TEXT,
+                display_name TEXT NOT NULL,
+                balance INTEGER DEFAULT 1000,
+                is_registered INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Создаем другие таблицы
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_bets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                round_id INTEGER,
+                bet_type TEXT,
+                bet_amount INTEGER,
+                result TEXT,
+                win_amount INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS game_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                round_id INTEGER UNIQUE,
+                result_number INTEGER,
+                result_color TEXT,
+                total_bets INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
+        
+        # Теперь получаем пользователя
         cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
         user = cursor.fetchone()
-    
-    conn.close()
-    return user
+        conn.close()
+        return user
+        
+    except Exception as e:
+        print(f"Error in get_user: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
+
+def create_user(telegram_id, username, display_name):
+    """Создание нового пользователя с автоинициализацией БД"""
+    try:
+        conn = sqlite3.connect('casino_online.db')
+        cursor = conn.cursor()
+        
+        # Создаем таблицу если не существует
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                telegram_id INTEGER UNIQUE,
+                username TEXT,
+                display_name TEXT NOT NULL,
+                balance INTEGER DEFAULT 1000,
+                is_registered INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        
+        # Создаем пользователя
+        cursor.execute('''
+            INSERT OR REPLACE INTO users 
+            (telegram_id, username, display_name, balance, is_registered) 
+            VALUES (?, ?, ?, 1000, 1)
+        ''', (telegram_id, username, display_name))
+        
+        conn.commit()
+        user_id = cursor.lastrowid
+        conn.close()
+        return user_id
+        
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
+
+def update_balance(telegram_id, new_balance):
+    """Обновление баланса пользователя с автоинициализацией БД"""
+    try:
+        conn = sqlite3.connect('casino_online.db')
+        cursor = conn.cursor()
+        
+        # Создаем таблицу если не существует
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                telegram_id INTEGER UNIQUE,
+                username TEXT,
+                display_name TEXT NOT NULL,
+                balance INTEGER DEFAULT 1000,
+                is_registered INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        
+        # Обновляем баланс
+        cursor.execute('UPDATE users SET balance = ? WHERE telegram_id = ?', (new_balance, telegram_id))
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"Error updating balance: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return False
+        
+def ensure_database():
+    """Гарантированная инициализация базы данных"""
+    try:
+        conn = sqlite3.connect('casino_online.db')
+        cursor = conn.cursor()
+        
+        # Таблица пользователей
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                telegram_id INTEGER UNIQUE,
+                username TEXT,
+                display_name TEXT NOT NULL,
+                balance INTEGER DEFAULT 1000,
+                is_registered INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Таблица ставок
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_bets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                round_id INTEGER,
+                bet_type TEXT,
+                bet_amount INTEGER,
+                result TEXT,
+                win_amount INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Таблица истории игр
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS game_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                round_id INTEGER UNIQUE,
+                result_number INTEGER,
+                result_color TEXT,
+                total_bets INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ Database ensured")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Database ensure error: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return False
+
 
 def update_user(telegram_id, **kwargs):
     conn = sqlite3.connect('casino_online.db')
@@ -952,6 +1121,7 @@ def api_status():
 @app.route('/api/check_registration', methods=['GET'])
 def api_check_registration():
     """Проверка статуса регистрации пользователя"""
+    ensure_database()
     try:
         user_id = request.args.get('user_id')
         
@@ -1029,6 +1199,7 @@ def api_register():
 
 @app.route('/api/place_bet', methods=['POST'])
 def api_place_bet():
+    ensure_database()
     data = request.json
     user_id = data['user_id']
     bet_type = data['bet_type']
