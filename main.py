@@ -949,23 +949,41 @@ def api_status():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/api/check_registration')
+@app.route('/api/check_registration', methods=['GET'])
 def api_check_registration():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({'success': False, 'message': 'User ID required'})
-    
-    user = get_user(int(user_id))
-    
-    if user and user[5]:  # is_registered = 1
+    """Проверка статуса регистрации пользователя"""
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'User ID required'
+            }), 400
+        
+        user = get_user(int(user_id))
+        
+        if user and user[5]:  # is_registered = 1
+            return jsonify({
+                'success': True,
+                'is_registered': True,
+                'display_name': user[3],
+                'balance': user[4],
+                'username': user[2] or ''
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'is_registered': False,
+                'balance': user[4] if user else 1000
+            })
+            
+    except Exception as e:
+        print(f"Error in check_registration: {e}")
         return jsonify({
-            'success': True,
-            'is_registered': True,
-            'display_name': user[3],
-            'balance': user[4]
-        })
-    else:
-        return jsonify({'success': True, 'is_registered': False})
+            'success': False,
+            'message': 'Server error'
+        }), 500
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
