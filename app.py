@@ -929,9 +929,11 @@ def game():
 def api_status():
     return jsonify({
         'status': 'online',
+        'version': APP_VERSION,
         'players_online': len(online_players),
         'game_state': game_state,
         'current_bets_count': len(current_bets),
+        'uptime': time.time() - game_state.get('start_time', time.time()),
         'timestamp': datetime.now().isoformat()
     })
 
