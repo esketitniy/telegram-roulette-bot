@@ -60,50 +60,39 @@ game_state = {
 }
 
 # База данных
-def init_db():
-    conn = sqlite3.connect('casino_online.db')
-    cursor = conn.cursor()
+def init_background_services():
+    """Инициализация фоновых сервисов"""
+    print(f"📁 Database path: {DB_PATH}")
     
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            telegram_id INTEGER UNIQUE,
-            username TEXT,
-            display_name TEXT,
-            balance INTEGER DEFAULT 1000,
-            is_registered INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    # Инициализация базы данных на диске
+    if ensure_database():
+        print("✅ Database initialized on persistent disk")
+    else:
+        print("❌ Database initialization failed")
     
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS game_history (
-            id INTEGER PRIMARY KEY,
-            round_id INTEGER,
-            result_number INTEGER,
-            result_color TEXT,
-            total_bets INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    # Устанавливаем время запуска
+    game_state['start_time'] = time.time()
     
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_bets (
-            id INTEGER PRIMARY KEY,
-            user_id INTEGER,
-            round_id INTEGER,
-            bet_type TEXT,
-            amount INTEGER,
-            result TEXT DEFAULT 'pending',
-            win_amount INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
+    # Запуск игрового движка
+    game_engine_thread = threading.Thread(target=online_game_engine)
+    game_engine_thread.daemon = True
+    game_engine_thread.start()
+    print("✅ Online game engine started")
     
-    conn.commit()
-    conn.close()
+    # Запуск очистки неактивных игроков
+    cleanup_thread = threading.Thread(target=cleanup_inactive_players)
+    cleanup_thread.daemon = True
+    cleanup_thread.start()
+    print("✅ Cleanup service started")
+    
+    # Запуск Telegram бота
+    if BOT_TOKEN and BOT_TOKEN != 'YOUR_BOT_TOKEN':
+        bot_thread = threading.Thread(target=run_bot)
+        bot_thread.daemon = True
+        bot_thread.start()
+        print("✅ Telegram bot started")
+    else:
+        print("⚠️  BOT_TOKEN not configured")
 
 def get_user(telegram_id):
     """Получение пользователя по Telegram ID"""
@@ -1343,6 +1332,42 @@ def api_test():
         'timestamp': datetime.now().isoformat()
     })
 
+@app.route('/api/disk_info')
+def api_disk_info():
+    """Информация о диске и базе данных"""
+    try:
+        import shutil
+        
+        disk_mounted = os.path.exists('/data')
+        db_exists = os.path.exists(DB_PATH)
+        
+        info = {
+            'disk_mounted': disk_mounted,
+            'database_path': DB_PATH,
+            'database_exists': db_exists,
+            'using_persistent_storage': DB_PATH.startswith('/data')
+        }
+        
+        if disk_mounted:
+            # Получаем информацию о диске
+            disk_usage = shutil.disk_usage('/data')
+            info['disk_total'] = disk_usage.total
+            info['disk_used'] = disk_usage.used
+            info['disk_free'] = disk_usage.free
+        
+        if db_exists:
+            # Размер базы данных
+            info['database_size'] = os.path.getsize(DB_PATH)
+        
+        return jsonify(info)
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'disk_mounted': False,
+            'database_path': DB_PATH
+        })
+        
 # Telegram Bot функции
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id)
