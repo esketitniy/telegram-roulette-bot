@@ -1466,8 +1466,6 @@ def cleanup_inactive_players():
 if __name__ == '__main__':
     print("🌐 Starting Online Casino Server...")
     
-def init_background_services():
-    """Инициализация фоновых сервисов"""
     # Устанавливаем время запуска
     game_state['start_time'] = time.time()
     
@@ -1495,11 +1493,7 @@ def init_background_services():
         print("✅ Telegram bot started")
     else:
         print("⚠️  BOT_TOKEN not configured")
-
-# Инициализация при импорте (для gunicorn)
-init_background_services()
-
-if __name__ == '__main__':
-    print("🌐 Starting Online Casino Server...")
+    
+    # Запуск Flask сервера
     print(f"🚀 Starting Flask server on port {PORT}")
     app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
