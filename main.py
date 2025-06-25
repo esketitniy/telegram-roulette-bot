@@ -10,6 +10,9 @@ import random
 import json
 import os
 
+# Путь к базе данных на диске
+DB_PATH = '/data/casino_online.db' if os.path.exists('/data') else 'casino_online.db'
+
 # Версия приложения
 APP_VERSION = "1.0.0"
 
@@ -87,53 +90,11 @@ def init_db():
     conn.close()
 
 def get_user(telegram_id):
-    """Получение пользователя по Telegram ID с автоинициализацией БД"""
+    """Получение пользователя по Telegram ID"""
     try:
-        conn = sqlite3.connect('casino_online.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Создаем таблицу если не существует
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                telegram_id INTEGER UNIQUE,
-                username TEXT,
-                display_name TEXT NOT NULL,
-                balance INTEGER DEFAULT 1000,
-                is_registered INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Создаем другие таблицы
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_bets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                round_id INTEGER,
-                bet_type TEXT,
-                bet_amount INTEGER,
-                result TEXT,
-                win_amount INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS game_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                round_id INTEGER UNIQUE,
-                result_number INTEGER,
-                result_color TEXT,
-                total_bets INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        conn.commit()
-        
-        # Теперь получаем пользователя
         cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
         user = cursor.fetchone()
         conn.close()
@@ -146,68 +107,48 @@ def get_user(telegram_id):
         return None
 
 def create_user(telegram_id, username, display_name):
-    """Создание нового пользователя с автоинициализацией БД"""
+    """Создание нового пользователя"""
     try:
-        conn = sqlite3.connect('casino_online.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Создаем таблицу если не существует
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                telegram_id INTEGER UNIQUE,
-                username TEXT,
-                display_name TEXT NOT NULL,
-                balance INTEGER DEFAULT 1000,
-                is_registered INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        conn.commit()
-        
-        # Создаем пользователя
-        cursor.execute('''
-            INSERT OR REPLACE INTO users 
+            INSERT INTO users 
             (telegram_id, username, display_name, balance, is_registered) 
             VALUES (?, ?, ?, 1000, 1)
-        ''', (telegram_id, username, display_name))
+        ''', (telegram_id, username or '', display_name))
         
         conn.commit()
         user_id = cursor.lastrowid
         conn.close()
+        
+        print(f"✅ User created with ID: {user_id}")
         return user_id
         
+    except sqlite3.IntegrityError as e:
+        print(f"❌ User already exists: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
+        
     except Exception as e:
-        print(f"Error creating user: {e}")
+        print(f"❌ Error creating user: {e}")
         if 'conn' in locals():
             conn.close()
         return None
 
 def update_balance(telegram_id, new_balance):
-    """Обновление баланса пользователя с автоинициализацией БД"""
+    """Обновление баланса пользователя"""
     try:
-        conn = sqlite3.connect('casino_online.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Создаем таблицу если не существует
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                telegram_id INTEGER UNIQUE,
-                username TEXT,
-                display_name TEXT NOT NULL,
-                balance INTEGER DEFAULT 1000,
-                is_registered INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        conn.commit()
-        
-        # Обновляем баланс
         cursor.execute('UPDATE users SET balance = ? WHERE telegram_id = ?', (new_balance, telegram_id))
         conn.commit()
+        rows_affected = cursor.rowcount
         conn.close()
-        return True
+        
+        return rows_affected > 0
         
     except Exception as e:
         print(f"Error updating balance: {e}")
@@ -216,9 +157,14 @@ def update_balance(telegram_id, new_balance):
         return False
         
 def ensure_database():
-    """Гарантированная инициализация базы данных"""
+    """Гарантированная инициализация базы данных на диске"""
     try:
-        conn = sqlite3.connect('casino_online.db')
+        # Создаем директорию если не существует
+        db_dir = os.path.dirname(DB_PATH)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         # Таблица пользователей
@@ -263,7 +209,7 @@ def ensure_database():
         
         conn.commit()
         conn.close()
-        print("✅ Database ensured")
+        print(f"✅ Database ensured at: {DB_PATH}")
         return True
         
     except Exception as e:
@@ -271,7 +217,6 @@ def ensure_database():
         if 'conn' in locals():
             conn.close()
         return False
-
 
 def update_user(telegram_id, **kwargs):
     conn = sqlite3.connect('casino_online.db')
@@ -284,40 +229,116 @@ def update_user(telegram_id, **kwargs):
     conn.commit()
     conn.close()
 
-def save_bet(user_id, round_id, bet_type, amount):
-    conn = sqlite3.connect('casino_online.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO user_bets (user_id, round_id, bet_type, amount)
-        VALUES (?, ?, ?, ?)
-    ''', (user_id, round_id, bet_type, amount))
-    conn.commit()
-    conn.close()
+def save_bet(user_id, round_id, bet_type, bet_amount, result, win_amount):
+    """Сохранение ставки в базу данных"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO user_bets 
+            (user_id, round_id, bet_type, bet_amount, result, win_amount) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (user_id, round_id, bet_type, bet_amount, result, win_amount))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"Error saving bet: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return False
 
+def save_game_history(round_id, result_number, result_color, total_bets):
+    """Сохранение истории игры"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO game_history 
+            (round_id, result_number, result_color, total_bets) 
+            VALUES (?, ?, ?, ?)
+        ''', (round_id, result_number, result_color, total_bets))
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"Error saving game history: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return False
+
+def get_game_history(limit=20):
+    """Получение истории игр"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT round_id, result_number, result_color, total_bets, created_at 
+            FROM game_history 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        ''', (limit,))
+        
+        history = cursor.fetchall()
+        conn.close()
+        return history
+        
+    except Exception as e:
+        print(f"Error getting game history: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return []
+        
 def get_user_stats(telegram_id):
-    conn = sqlite3.connect('casino_online.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT 
-            COUNT(*) as total_games,
-            SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN result = 'win' THEN win_amount ELSE 0 END) as total_won,
-            SUM(amount) as total_bet
-        FROM user_bets ub
-        JOIN users u ON u.id = ub.user_id
-        WHERE u.telegram_id = ?
-    ''', (telegram_id,))
-    
-    stats = cursor.fetchone()
-    conn.close()
-    
-    return {
-        'total_games': stats[0] or 0,
-        'wins': stats[1] or 0,
-        'total_won': stats[2] or 0,
-        'total_bet': stats[3] or 0
-    }
+    """Получение статистики пользователя"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Получаем пользователя
+        cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return None
+        
+        user_id = user[0]
+        
+        # Получаем статистику ставок
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_bets,
+                SUM(bet_amount) as total_wagered,
+                SUM(win_amount) as total_won,
+                SUM(CASE WHEN win_amount > 0 THEN 1 ELSE 0 END) as wins
+            FROM user_bets 
+            WHERE user_id = ?
+        ''', (user_id,))
+        
+        stats = cursor.fetchone()
+        conn.close()
+        
+        return {
+            'user': user,
+            'total_bets': stats[0] or 0,
+            'total_wagered': stats[1] or 0,
+            'total_won': stats[2] or 0,
+            'wins': stats[3] or 0
+        }
+        
+    except Exception as e:
+        print(f"Error getting user stats: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
 
 def get_color_emoji(color):
     return {'red': '🔴', 'black': '⚫', 'green': '🟢'}.get(color, '🎰')
