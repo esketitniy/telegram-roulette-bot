@@ -1464,36 +1464,35 @@ def cleanup_inactive_players():
 
 if __name__ == '__main__':
     print("🌐 Starting Online Casino Server...")
-    print(f"📋 Version: {APP_VERSION}")
     
     # Устанавливаем время запуска
     game_state['start_time'] = time.time()
     
     # Инициализация базы данных
     init_db()
-    logger.info("✅ Database initialized")
+    print("✅ Database initialized")
     
     # Запуск игрового движка
     game_engine_thread = threading.Thread(target=online_game_engine)
     game_engine_thread.daemon = True
     game_engine_thread.start()
-    logger.info("✅ Online game engine started")
+    print("✅ Online game engine started")
     
     # Запуск очистки неактивных игроков
     cleanup_thread = threading.Thread(target=cleanup_inactive_players)
     cleanup_thread.daemon = True
     cleanup_thread.start()
-    logger.info("✅ Cleanup service started")
+    print("✅ Cleanup service started")
     
     # Запуск Telegram бота
     if BOT_TOKEN and BOT_TOKEN != 'YOUR_BOT_TOKEN':
         bot_thread = threading.Thread(target=run_bot)
         bot_thread.daemon = True
         bot_thread.start()
-        logger.info("✅ Telegram bot started")
+        print("✅ Telegram bot started")
     else:
-        logger.warning("⚠️  BOT_TOKEN not configured")
+        print("⚠️  BOT_TOKEN not configured")
     
     # Запуск Flask сервера
-    logger.info(f"🚀 Starting Flask server on port {PORT}")
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    print(f"🚀 Starting Flask server on port {PORT}")
+    app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
