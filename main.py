@@ -1329,7 +1329,8 @@ def online_game_engine():
                     game_state['countdown'] = i
                     time.sleep(1)
                 
-                if not # Начинаем спин
+                if not game_state['is_spinning']:
+                    # Начинаем спин
                     game_state['is_spinning'] = True
                     game_state['countdown'] = 0
                     game_state['round_id'] = int(time.time())
