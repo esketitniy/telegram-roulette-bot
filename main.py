@@ -9,9 +9,25 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import random
 import json
 import os
+import sqlite3
+import threading
+import time
+import json
+import random
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify
 
-# Путь к базе данных на диске
+# Определяем путь к базе данных
 DB_PATH = '/data/casino_online.db' if os.path.exists('/data') else 'casino_online.db'
+
+print(f"🗂️  Using database path: {DB_PATH}")
+print(f"💾 Disk mounted: {os.path.exists('/data')}")
+
+# Создаем директорию для БД если нужно
+db_dir = os.path.dirname(DB_PATH)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir, exist_ok=True)
+    print(f"📁 Created directory: {db_dir}")
 
 # Версия приложения
 APP_VERSION = "1.0.0"
