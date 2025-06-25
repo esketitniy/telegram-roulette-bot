@@ -95,28 +95,36 @@ def init_background_services():
         print("⚠️  BOT_TOKEN not configured")
 
 def get_user(telegram_id):
-    """Получение пользователя по Telegram ID"""
+    """Получение пользователя с отладкой"""
+    print(f"🔍 get_user called with telegram_id: {telegram_id}")
+    
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
         user = cursor.fetchone()
+        
+        print(f"🔍 get_user result: {user}")
         conn.close()
         return user
         
     except Exception as e:
-        print(f"Error in get_user: {e}")
+        print(f"❌ Error in get_user: {e}")
         if 'conn' in locals():
             conn.close()
         return None
-
+        
 def create_user(telegram_id, username, display_name):
-    """Создание нового пользователя"""
+    """Создание нового пользователя с отладкой"""
+    print(f"🔄 create_user called with: {telegram_id}, {username}, {display_name}")
+    
     try:
+        print(f"🔍 Connecting to database: {DB_PATH}")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
+        print("🔍 Executing INSERT query...")
         cursor.execute('''
             INSERT INTO users 
             (telegram_id, username, display_name, balance, is_registered) 
@@ -125,19 +133,28 @@ def create_user(telegram_id, username, display_name):
         
         conn.commit()
         user_id = cursor.lastrowid
-        conn.close()
+        print(f"🔍 Insert successful, lastrowid: {user_id}")
         
-        print(f"✅ User created with ID: {user_id}")
+        # Проверяем что пользователь действительно создался
+        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        created_user = cursor.fetchone()
+        print(f"🔍 Verification query result: {created_user}")
+        
+        conn.close()
+        print(f"✅ User created successfully with ID: {user_id}")
         return user_id
         
     except sqlite3.IntegrityError as e:
-        print(f"❌ User already exists: {e}")
+        print(f"❌ IntegrityError (user already exists): {e}")
         if 'conn' in locals():
             conn.close()
         return None
         
     except Exception as e:
-        print(f"❌ Error creating user: {e}")
+        print(f"❌ Error in create_user: {e}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
         if 'conn' in locals():
             conn.close()
         return None
@@ -1183,45 +1200,124 @@ def api_check_registration():
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
-    data = request.json
-    user_id = data['user_id']
-    username = data.get('username', '')
-    display_name = data['display_name']
+    """Регистрация нового пользователя с детальной отладкой"""
+    print("🔄 Starting registration process...")
+    
+    # Убеждаемся что БД инициализирована
+    ensure_database()
     
     try:
-        # Проверяем уникальность имени
-        conn = sqlite3.connect('casino_online.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id FROM users WHERE display_name = ? AND telegram_id != ?', (display_name, user_id))
-        existing = cursor.fetchone()
+        # Отладка 1: Проверяем входящие данные
+        print(f"🔍 Request method: {request.method}")
+        print(f"🔍 Content-Type: {request.content_type}")
+        print(f"🔍 Raw data: {request.data}")
         
-        if existing:
-            conn.close()
-            return jsonify({'success': False, 'message': 'This name is already taken!'})
+        data = request.get_json()
+        print(f"🔍 Parsed JSON: {data}")
         
-        # Обновляем или создаем пользователя
-        user = get_user(user_id)
-        if user:
-            update_user(user_id, username=username, display_name=display_name, is_registered=1)
+        if not data:
+            print("❌ No JSON data received")
+            return jsonify({
+                'success': False,
+                'message': 'No data provided'
+            }), 400
         
-        user = get_user(user_id)
-        conn.close()
+        # Отладка 2: Извлекаем параметры
+        telegram_id = data.get('telegram_id')
+        username = data.get('username', '')
+        display_name = data.get('display_name', '')
         
-        # Добавляем в онлайн игроков
-        online_players[str(user_id)] = {
-            'user_id': user_id,
-            'display_name': display_name,
-            'joined_at': datetime.now().isoformat()
-        }
+        print(f"🔍 Extracted data:")
+        print(f"  - telegram_id: {telegram_id} (type: {type(telegram_id)})")
+        print(f"  - username: {username}")
+        print(f"  - display_name: {display_name}")
+        
+        # Проверка обязательных полей
+        if not telegram_id:
+            print("❌ Missing telegram_id")
+            return jsonify({
+                'success': False,
+                'message': 'Telegram ID required'
+            }), 400
+        
+        if not display_name:
+            print("❌ Missing display_name")
+            return jsonify({
+                'success': False,
+                'message': 'Display name required'
+            }), 400
+        
+        # Отладка 3: Проверяем существующего пользователя
+        print(f"🔍 Checking existing user with ID: {telegram_id}")
+        existing_user = get_user(int(telegram_id))
+        print(f"🔍 Existing user result: {existing_user}")
+        
+        if existing_user:
+            print("🔄 Updating existing user...")
+            # Обновляем существующего пользователя
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE users 
+                    SET username = ?, display_name = ?, is_registered = 1 
+                    WHERE telegram_id = ?
+                ''', (username, display_name, int(telegram_id)))
+                
+                rows_affected = cursor.rowcount
+                conn.commit()
+                conn.close()
+                
+                print(f"✅ User updated, rows affected: {rows_affected}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'User updated successfully',
+                    'user_id': existing_user[0],
+                    'display_name': display_name,
+                    'balance': existing_user[4]
+                })
+                
+            except Exception as update_error:
+                print(f"❌ Error updating user: {update_error}")
+                if 'conn' in locals():
+                    conn.close()
+                raise update_error
+        
+        else:
+            print("🆕 Creating new user...")
+            # Создаем нового пользователя
+            user_id = create_user(int(telegram_id), username, display_name)
+            print(f"🔍 create_user returned: {user_id}")
+            
+            if user_id:
+                print(f"✅ New user created successfully with ID: {user_id}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'User registered successfully',
+                    'user_id': user_id,
+                    'display_name': display_name,
+                    'balance': 1000
+                })
+            else:
+                print("❌ create_user returned None")
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to create user'
+                }), 500
+                
+    except Exception as e:
+        print(f"❌ Exception in api_register: {e}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
         
         return jsonify({
-            'success': True,
-            'display_name': display_name,
-            'balance': user[4]
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'message': 'Registration failed. Please try again.'})
+            'success': False,
+            'message': f'Registration error: {str(e)}'
+        }), 500
 
 @app.route('/api/place_bet', methods=['POST'])
 def api_place_bet():
