@@ -307,23 +307,63 @@ def update_balance(telegram_id, new_balance):
         return False
 
 def ensure_database():
-    """Обновленная схема БД с авторизацией"""
+    """Обновленная схема БД с миграцией"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Таблица пользователей с логином/паролем
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                display_name TEXT NOT NULL,
-                balance INTEGER DEFAULT 1000,
-                last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+        # Проверяем существование таблицы users
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        table_exists = cursor.fetchone()
+        
+        if table_exists:
+            # Проверяем структуру таблицы
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [column[1] for column in cursor.fetchall()]
+            
+            # Если нет колонки password_hash, делаем миграцию
+            if 'password_hash' not in columns:
+                print("🔄 Migrating database structure...")
+                
+                # Создаем новую таблицу с правильной структурой
+                cursor.execute('''
+                    CREATE TABLE users_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        display_name TEXT NOT NULL,
+                        balance INTEGER DEFAULT 1000,
+                        last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Если есть старые данные, пытаемся их перенести
+                if 'password' in columns:
+                    cursor.execute('''
+                        INSERT INTO users_new (id, username, password_hash, display_name, balance, created_at)
+                        SELECT id, username, password, display_name, balance, created_at
+                        FROM users
+                    ''')
+                
+                # Удаляем старую таблицу и переименовываем новую
+                cursor.execute('DROP TABLE users')
+                cursor.execute('ALTER TABLE users_new RENAME TO users')
+                
+                print("✅ Database migration completed")
+        else:
+            # Создаем таблицу с нуля
+            cursor.execute('''
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    balance INTEGER DEFAULT 1000,
+                    last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
         
         # Таблица сессий
         cursor.execute('''
