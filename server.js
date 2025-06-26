@@ -54,6 +54,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // API маршруты
+// Добавьте эти проверки в API маршруты
 app.post('/api/register', async (req, res) => {
     try {
         if (!dbInitialized) {
@@ -62,24 +63,46 @@ app.post('/api/register', async (req, res) => {
 
         const { username, password } = req.body;
         
-        console.log('Попытка регистрации:', username);
+        console.log('Попытка регистрации:', { username, passwordLength: password?.length });
         
         if (!username || !password) {
             return res.status(400).json({ error: 'Логин и пароль обязательны' });
+        }
+
+        if (typeof username !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Неверный формат данных' });
+        }
+
+        if (username.trim().length < 3) {
+            return res.status(400).json({ error: 'Логин должен содержать минимум 3 символа' });
         }
 
         if (password.length < 6) {
             return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
         }
 
-        const user = await db.createUser(username, password);
+        // Проверка существующего пользователя
+        const existingUser = await db.getUser(username.trim());
+        if (existingUser) {
+            return res.status(400).json({ error: 'Пользователь с таким логином уже существует' });
+        }
+
+        const user = await db.createUser(username.trim(), password);
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
         
         console.log('Пользователь успешно зарегистрирован:', user.id);
-        res.json({ token, user: { id: user.id, username: user.username, balance: 1000 } });
+        res.json({ 
+            token,res.json({ 
+            token, 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                balance: 1000 
+            } 
+        });
     } catch (error) {
         console.error('Ошибка регистрации:', error);
-        if (error.code === 'SQLITE_CONSTRAINT') {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
             res.status(400).json({ error: 'Пользователь с таким логином уже существует' });
         } else {
             res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
@@ -95,11 +118,27 @@ app.post('/api/login', async (req, res) => {
 
         const { username, password } = req.body;
         
-        console.log('Попытка входа:', username);
+        console.log('Попытка входа:', { username, passwordLength: password?.length });
         
-        const user = await db.getUser(username);
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Введите логин и пароль' });
+        }
 
-        if (!user || !bcrypt.compareSync(password, user.password)) {
+        if (typeof username !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Неверный формат данных' });
+        }
+
+        const user = await db.getUser(username.trim());
+        console.log('Найден пользователь:', user ? 'да' : 'нет');
+
+        if (!user) {
+            return res.status(401).json({ error: 'Неверный логин или пароль' });
+        }
+
+        const passwordMatch = bcrypt.compareSync(password, user.password);
+        console.log('Пароль совпадает:', passwordMatch);
+
+        if (!passwordMatch) {
             return res.status(401).json({ error: 'Неверный логин или пароль' });
         }
 
