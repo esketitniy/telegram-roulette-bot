@@ -3,8 +3,7 @@ const bcrypt = require('bcrypt');
 
 class Database {
     constructor() {
-        this.db = new sqlite3.Database(':memory:'); // Для продакшена используйте файл
-        this.init();
+        this.db = new sqlite3.Database('./database.db'); // Для продакшена используйте файл
     }
 
     init() {
