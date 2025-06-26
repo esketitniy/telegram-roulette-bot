@@ -1269,3 +1269,87 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM загружен, инициализация игры...');
     window.game = new RouletteGame();
 });
+
+// Добавить в конструктор RouletteGame
+constructor() {
+    this.socket = io();
+    this.token = localStorage.getItem('token');
+    this.user = null;
+    this.selectedColor = null;
+    this.gameState = {};
+    this.retryCount = 0;
+    this.maxRetries = 3;
+    this.connectionStatus = 'connecting';
+    
+    this.init();
+    this.setupConnectionMonitoring();
+}
+
+// Добавить методы для мониторинга подключения
+setupConnectionMonitoring() {
+    this.createConnectionIndicator();
+    
+    this.socket.on('connect', () => {
+        console.log('Подключен к серверу');
+        this.connectionStatus = 'connected';
+        this.updateConnectionIndicator();
+    });
+
+    this.socket.on('disconnect', () => {
+        console.log('Отключен от сервера');
+        this.connectionStatus = 'disconnected';
+        this.updateConnectionIndicator();
+    });
+
+    this.socket.on('connecting', () => {
+        console.log('Подключение к серверу...');
+        this.connectionStatus = 'connecting';
+        this.updateConnectionIndicator();
+    });
+}
+
+createConnectionIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'connectionStatus';
+    indicator.className = 'connection-status connecting';
+    indicator.textContent = 'Подключение...';
+    document.body.appendChild(indicator);
+}
+
+updateConnectionIndicator() {
+    const indicator = document.getElementById('connectionStatus');
+    if (!indicator) return;
+
+    indicator.className = `connection-status ${this.connectionStatus}`;
+    
+    switch (this.connectionStatus) {
+        case 'connected':
+            indicator.textContent = '🟢 Подключено';
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+            }, 2000);
+            break;
+        case 'disconnected':
+            indicator.textContent = '🔴 Нет соединения';
+            indicator.style.opacity = '1';
+            break;
+        case 'connecting':
+            indicator.textContent = '🟡 Подключение...';
+            indicator.style.opacity = '1';
+            break;
+    }
+}
+
+// Добавить обработку ошибок сети
+showAuthLoading(message) {
+    const errorElement = document.getElementById('authError');
+    if (errorElement) {
+        errorElement.innerHTML = `
+            <span class="loading-spinner"></span>
+            ${message}
+        `;
+        errorElement.className = 'error-message loading';
+        errorElement.style.display = 'block';
+    }
+    console.log('Auth loading:', message);
+}
