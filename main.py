@@ -2383,6 +2383,16 @@ def api_disk_check():
         
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@app.route('/api/debug_state')
+def debug_state():
+    """Отладочная информация о состоянии"""
+    return jsonify({
+        'game_state': game_state,
+        'game_state_keys': list(game_state.keys()),
+        'phase_exists': 'phase' in game_state,
+        'current_phase': game_state.get('phase', 'NOT_FOUND')
+    })
         
 # Telegram Bot функции
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
