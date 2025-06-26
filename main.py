@@ -305,7 +305,7 @@ def update_balance(telegram_id, new_balance):
         if 'conn' in locals():
             conn.close()
         return False
-        
+
 def ensure_database():
     """Обновленная схема БД с авторизацией"""
     try:
@@ -338,7 +338,7 @@ def ensure_database():
             )
         ''')
         
-        # Остальные таблицы...
+        # Таблица ставок
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_bets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -353,6 +353,7 @@ def ensure_database():
             )
         ''')
         
+        # Таблица истории игр
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS game_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -374,19 +375,167 @@ def ensure_database():
         if 'conn' in locals():
             conn.close()
         return False
-def update_user(telegram_id, **kwargs):
-    conn = sqlite3.connect('casino_online.db')
-    cursor = conn.cursor()
-    
-    set_clause = ', '.join([f'{key} = ?' for key in kwargs.keys()])
-    values = list(kwargs.values()) + [telegram_id]
-    
-    cursor.execute(f'UPDATE users SET {set_clause}, last_seen = CURRENT_TIMESTAMP WHERE telegram_id = ?', values)
-    conn.commit()
-    conn.close()
 
-def save_bet(user_id, round_id, bet_type, bet_amount, result, win_amount):
-    """Сохранение ставки в базу данных"""
+# 6. ФУНКЦИИ АВТОРИЗАЦИИ (ПЕРЕМЕСТИТЕ СЮДА ВАШ КОД)
+def hash_password(password):
+    """Хеширование пароля"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def generate_session_token():
+    """Генерация токена сессии"""
+    return secrets.token_urlsafe(32)
+
+def create_user_account(username, password, display_name):
+    """Создание аккаунта пользователя"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Проверяем уникальность username
+        cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+        if cursor.fetchone():
+            conn.close()
+            return None, "Username already exists"
+        
+        # Создаем пользователя
+        password_hash = hash_password(password)
+        cursor.execute('''
+            INSERT INTO users (username, password_hash, display_name, balance)
+            VALUES (?, ?, ?, 1000)
+        ''', (username, password_hash, display_name))
+        
+        user_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return user_id, "User created successfully"
+        
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None, str(e)
+
+def authenticate_user(username, password):
+    """Аутентификация пользователя"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        password_hash = hash_password(password)
+        cursor.execute('''
+            SELECT id, username, display_name, balance 
+            FROM users 
+            WHERE username = ? AND password_hash = ?
+        ''', (username, password_hash))
+        
+        user = cursor.fetchone()
+        
+        if user:
+            # Обновляем время последнего входа
+            cursor.execute('''
+                UPDATE users SET last_login = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            ''', (user[0],))
+            conn.commit()
+        
+        conn.close()
+        return user
+        
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
+
+def create_session(user_id):
+    """Создание сессии пользователя"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Деактивируем старые сессии
+        cursor.execute('UPDATE user_sessions SET is_active = 0 WHERE user_id = ?', (user_id,))
+        
+        # Создаем новую сессию
+        session_token = generate_session_token()
+        expires_at = datetime.now() + timedelta(days=7)  # Сессия на 7 дней
+        
+        cursor.execute('''
+            INSERT INTO user_sessions (user_id, session_token, expires_at)
+            VALUES (?, ?, ?)
+        ''', (user_id, session_token, expires_at))
+        
+        conn.commit()
+        conn.close()
+        
+        return session_token
+        
+    except Exception as e:
+        print(f"Session creation error: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
+
+def validate_session(session_token):
+    """Проверка действительности сессии"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT u.id, u.username, u.display_name, u.balance
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = ? AND s.is_active = 1 AND s.expires_at > CURRENT_TIMESTAMP
+        ''', (session_token,))
+        
+        user = cursor.fetchone()
+        conn.close()
+        
+        return user
+        
+    except Exception as e:
+        print(f"Session validation error: {e}")
+        if 'conn' in locals():
+            conn.close()
+        return None
+
+# 7. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+def get_user_by_id(user_id):
+    """Получение пользователя по ID"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+        conn.close()
+        return user
+        
+    except Exception as e:
+        print(f"Error getting user by ID: {e}")
+        return None
+
+def update_user_balance(user_id, new_balance):
+    """Обновление баланса пользователя"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('UPDATE users SET balance = ? WHERE id = ?', (new_balance, user_id))
+        conn.commit()
+        rows_affected = cursor.rowcount
+        conn.close()
+        
+        return rows_affected > 0
+        
+    except Exception as e:
+        print(f"Error updating balance: {e}")
+        return False
+
+def save_bet_history(user_id, round_id, bet_type, bet_amount, result, win_amount):
+    """Сохранение ставки в историю"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -403,12 +552,10 @@ def save_bet(user_id, round_id, bet_type, bet_amount, result, win_amount):
         
     except Exception as e:
         print(f"Error saving bet: {e}")
-        if 'conn' in locals():
-            conn.close()
         return False
 
-def save_game_history(round_id, result_number, result_color, total_bets):
-    """Сохранение истории игры"""
+def save_game_result(round_id, result_number, result_color, total_bets):
+    """Сохранение результата игры"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -424,80 +571,135 @@ def save_game_history(round_id, result_number, result_color, total_bets):
         return True
         
     except Exception as e:
-        print(f"Error saving game history: {e}")
-        if 'conn' in locals():
-            conn.close()
+        print(f"Error saving game result: {e}")
         return False
 
-def get_game_history(limit=20):
-    """Получение истории игр"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT round_id, result_number, result_color, total_bets, created_at 
-            FROM game_history 
-            ORDER BY created_at DESC 
-            LIMIT ?
-        ''', (limit,))
-        
-        history = cursor.fetchall()
-        conn.close()
-        return history
-        
-    except Exception as e:
-        print(f"Error getting game history: {e}")
-        if 'conn' in locals():
-            conn.close()
-        return []
-        
-def get_user_stats(telegram_id):
-    """Получение статистики пользователя"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Получаем пользователя
-        cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            return None
-        
-        user_id = user[0]
-        
-        # Получаем статистику ставок
-        cursor.execute('''
-            SELECT 
-                COUNT(*) as total_bets,
-                SUM(bet_amount) as total_wagered,
-                SUM(win_amount) as total_won,
-                SUM(CASE WHEN win_amount > 0 THEN 1 ELSE 0 END) as wins
-            FROM user_bets 
-            WHERE user_id = ?
-        ''', (user_id,))
-        
-        stats = cursor.fetchone()
-        conn.close()
-        
-        return {
-            'user': user,
-            'total_bets': stats[0] or 0,
-            'total_wagered': stats[1] or 0,
-            'total_won': stats[2] or 0,
-            'wins': stats[3] or 0
-        }
-        
-    except Exception as e:
-        print(f"Error getting user stats: {e}")
-        if 'conn' in locals():
-            conn.close()
-        return None
+# 8. ИГРОВОЙ ДВИЖОК
+def online_game_engine():
+    """Непрерывный игровой движок с точным таймингом"""
+    print("🎮 Live Casino Engine Started")
+    
+    while True:
+        try:
+            # Новый раунд
+            round_start_time = time.time()
+            game_state['round'] += 1
+            game_state['bets'] = {}
+            
+            # ФАЗА СТАВОК (30 секунд)
+            game_state['phase'] = 'betting'
+            betting_duration = 30
+            
+            print(f"🎰 Round {game_state['round']} - Betting Open")
+            
+            for remaining in range(betting_duration, 0, -1):
+                game_state['time_left'] = remaining
+                time.sleep(1)
+            
+            # ЗАКРЫТИЕ СТАВОК
+            game_state['phase'] = 'spinning'
+            print(f"🚫 Round {game_state['round']} - Betting Closed")
+            
+            # ФАЗА ВРАЩЕНИЯ (8 секунд)
+            spinning_duration = 8
+            
+            # Генерируем результат заранее
+            result_number = random.randint(0, 36)
+            if result_number == 0:
+                result_color = 'green'
+            elif result_number in [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]:
+                result_color = 'red'
+            else:
+                result_color = 'black'
+            
+            # Устанавливаем результат для анимации
+            game_state['spinning_result'] = {
+                'number': result_number,
+                'color': result_color
+            }
+            
+            print(f"🌀 Round {game_state['round']} - Spinning... Target: {result_number} ({result_color})")
+            
+            for remaining in range(spinning_duration, 0, -1):
+                game_state['time_left'] = remaining
+                time.sleep(1)
+            
+            # ПОКАЗ РЕЗУЛЬТАТА (5 секунд)
+            game_state['phase'] = 'result'
+            game_state['last_result'] = {
+                'number': result_number,
+                'color': result_color,
+                'round': game_state['round']
+            }
+            
+            print(f"🎯 Round {game_state['round']} - Result: {result_number} ({result_color})")
+            
+            # Обрабатываем ставки
+            process_round_bets(result_number, result_color)
+            
+            # Показываем результат
+            for remaining in range(5, 0, -1):
+                game_state['time_left'] = remaining
+                time.sleep(1)
+            
+        except Exception as e:
+            print(f"❌ Game engine error: {e}")
+            time.sleep(2)
 
-def get_color_emoji(color):
-    return {'red': '🔴', 'black': '⚫', 'green': '🟢'}.get(color, '🎰')
+def process_round_bets(result_number, result_color):
+    """Обработка всех ставок раунда"""
+    try:
+        total_bets_amount = 0
+        total_wins_amount = 0
+        
+        for user_id, user_bets in game_state['bets'].items():
+            # Получаем актуальный баланс пользователя
+            user = get_user_by_id(int(user_id))
+            if not user:
+                continue
+            
+            current_balance = user[4]  # balance column
+            
+            for bet in user_bets:
+                bet_type = bet['bet_type']
+                bet_amount = bet['bet_amount']
+                win_amount = 0
+                result = 'lose'
+                
+                # Определяем выигрыш
+                if bet_type == result_color:
+                    # Ставка на цвет
+                    if result_color == 'green':
+                        win_amount = bet_amount * 14  # x14 за зеленый
+                    else:
+                        win_amount = bet_amount * 2   # x2 за красный/черный
+                    result = 'win'
+                    
+                elif bet_type.isdigit() and int(bet_type) == result_number:
+                    # Ставка на конкретное число
+                    win_amount = bet_amount * 36  # x36 за число
+                    result = 'win'
+                
+                # Начисляем выигрыш
+                if win_amount > 0:
+                    new_balance = current_balance + win_amount
+                    update_user_balance(int(user_id), new_balance)
+                    current_balance = new_balance
+                    total_wins_amount += win_amount
+                    print(f"💰 User {user_id} won {win_amount} (bet: {bet_amount} on {bet_type})")
+                
+                # Сохраняем ставку в БД
+                save_bet_history(user[0], game_state['round'], bet_type, bet_amount, result, win_amount)
+                total_bets_amount += bet_amount
+        
+        # Сохраняем результат раунда
+        save_game_result(game_state['round'], result_number, result_color, total_bets_amount)
+        
+        print(f"📊 Round {game_state['round']} processed: {total_bets_amount} bet, {total_wins_amount} paid out")
+        
+    except Exception as e:
+        print(f"❌ Error processing bets: {e}")
+
 
 # Flask маршруты
 @app.route('/')
