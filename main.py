@@ -574,6 +574,35 @@ def save_game_result(round_id, result_number, result_color, total_bets):
         print(f"Error saving game result: {e}")
         return False
 
+# Добавьте эти функции в раздел "ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ"
+
+def get_color_emoji(color):
+    """Получение эмодзи для цвета"""
+    color_emojis = {
+        'red': '🔴',
+        'black': '⚫',
+        'green': '🟢'
+    }
+    return color_emojis.get(color, '⚪')
+
+def get_color_name(color):
+    """Получение названия цвета"""
+    color_names = {
+        'red': 'КРАСНОЕ',
+        'black': 'ЧЕРНОЕ', 
+        'green': 'ЗЕЛЕНОЕ'
+    }
+    return color_names.get(color, color.upper())
+
+def get_number_color(number):
+    """Определение цвета числа"""
+    if number == 0:
+        return 'green'
+    elif number in [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]:
+        return 'red'
+    else:
+        return 'black'
+
 # 8. ИГРОВОЙ ДВИЖОК
 def online_game_engine():
     """Непрерывный игровой движок с точным таймингом"""
@@ -702,92 +731,12 @@ def process_round_bets(result_number, result_color):
 
 
 # Flask маршруты
+# Добавьте в раздел "ROUTES" перед API endpoints
+
 @app.route('/')
 def index():
-    return f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>🎰 Online Casino</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body {{ 
-                font-family: Arial, sans-serif; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white; padding: 20px; text-align: center;
-                min-height: 100vh; margin: 0;
-            }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .status {{ 
-                background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; 
-                margin: 20px 0; backdrop-filter: blur(10px);
-            }}
-            .button {{ 
-                display: inline-block; background: linear-gradient(45deg, #FFD700, #FFA500);
-                color: black; padding: 15px 30px; text-decoration: none; border-radius: 10px;
-                font-weight: bold; margin: 10px; transition: transform 0.3s;
-            }}
-            .button:hover {{ transform: translateY(-2px); }}
-            .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }}
-            .stat-item {{ background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🎰 ONLINE CASINO</h1>
-            <p>Real-time multiplayer European Roulette</p>
-            
-            <div class="status">
-                <h3>📊 Live Status</h3>
-                <div class="stats">
-                    <div class="stat-item">
-                        <strong>👥 Players</strong><br>
-                        <span id="player-count">{len(online_players)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <strong>⏰ Next Spin</strong><br>
-                        <span id="countdown">{game_state['countdown']}</span>s
-                    </div>
-                    <div class="stat-item">
-                        <strong>🎲 Last Result</strong><br>
-                        {get_color_emoji(game_state['last_result']['color'])} {game_state['last_result']['number']}
-                    </div>
-                    <div class="stat-item">
-                        <strong>📊 Round</strong><br>
-                        #{game_state['round_id']}
-                    </div>
-                </div>
-            </div>
-            
-            <div>
-                <a href="/game" class="button">🎮 Play Casino</a>
-                <a href="/api/status" class="button">📊 API Status</a>
-            </div>
-            
-            <div style="margin-top: 30px; opacity: 0.8;">
-                <p>✨ Features: Real-time multiplayer • Persistent balance • Auto-sync</p>
-            </div>
-        </div>
-        
-        <script>
-            setInterval(async () => {{
-                try {{
-                    const response = await fetch('/api/status');
-                    const data = await response.json();
-                    document.getElementById('player-count').textContent = data.players_online;
-                    document.getElementById('countdown').textContent = data.game_state.countdown;
-                }} catch (e) {{
-                    console.log('Status update failed:', e);
-                }}
-            }}, 5000);
-        </script>
-    </body>
-    </html>
-    '''
-
-@app.route('/game')
-def game():
-    return render_template_string('''<!DOCTYPE html>
+    """Главная страница казино"""
+    return '''<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -1245,7 +1194,7 @@ def game():
         .result-number.black {
             background: #000000;
         }
-
+        
         .result-number.green {
             background: #008000;
         }
@@ -1308,6 +1257,12 @@ def game():
 
         .notification.error {
             border-left-color: #ff4757;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
@@ -1426,7 +1381,7 @@ def game():
     </div>
 
     <script>
-        // Глобальные переменры
+        // Глобальные переменные
         let currentUser = null;
         let sessionToken = null;
         let selectedBetType = null;
@@ -1524,7 +1479,8 @@ def game():
             });
 
             // Выбор типа ставки
-            document.querySelectorAll('.bet-option').forEach(option => {option.addEventListener('click', function() {
+            document.querySelectorAll('.bet-option').forEach(option => {
+                option.addEventListener('click', function() {
                     selectBetType(this.dataset.bet);
                 });
             });
@@ -2010,22 +1966,10 @@ def game():
                 notification.remove();
             }, 3000);
         }
-
-        // CSS для пульсации таймера
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.1); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </body>
-</html>
-''')
-                                  
+</html>''')
+
 # API endpoints
 @app.route('/api/status')
 def api_status():
@@ -2136,6 +2080,8 @@ def api_register():
             'message': 'Registration failed'
         }), 500
 
+
+
 @app.route('/api/login', methods=['POST'])
 def api_login():
     """Вход пользователя"""
@@ -2150,7 +2096,7 @@ def api_login():
         if not all([username, password]):
             return jsonify({
                 'success': False,
-                'message': 'Username and password required'
+                'message': 'Username and password are required'
             }), 400
         
         user = authenticate_user(username, password)
@@ -2161,7 +2107,6 @@ def api_login():
             
             return jsonify({
                 'success': True,
-                'message': 'Login successful',
                 'session_token': session_token,
                 'user': {
                     'id': user[0],
@@ -2211,15 +2156,15 @@ def api_validate_session():
         else:
             return jsonify({
                 'success': False,
-                'message': 'Invalid or expired session'
+                'message': 'Invalid session'
             }), 401
             
     except Exception as e:
-        print(f"Session validation error: {e}")
         return jsonify({
             'success': False,
-            'message': 'Validation failed'
+            'message': str(e)
         }), 500
+
         
 @app.route('/api/place_bet', methods=['POST'])
 def api_place_bet():
