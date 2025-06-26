@@ -3,47 +3,79 @@ const bcrypt = require('bcrypt');
 
 class Database {
     constructor() {
-        this.db = new sqlite3.Database('./database.db'); // Для продакшена используйте файл
+        // Для продакшена используйте файл базы данных
+        this.db = new sqlite3.Database('./database.db', (err) => {
+            if (err) {
+                console.error('Ошибка подключения к базе данных:', err);
+            } else {
+                console.log('База данных подключена успешно');
+                this.init();
+            }
+        });
     }
 
     init() {
-        // Создание таблиц
-        this.db.serialize(() => {
-            // Таблица пользователей
-            this.db.run(`
-                CREATE TABLE users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    balance INTEGER DEFAULT 1000,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
+        return new Promise((resolve, reject) => {
+            // Создание таблиц последовательно
+            this.db.serialize(() => {
+                // Таблица пользователей
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        password TEXT NOT NULL,
+                        balance INTEGER DEFAULT 1000,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Ошибка создания таблицы users:', err);
+                        reject(err);
+                    } else {
+                        console.log('Таблица users создана');
+                    }
+                });
 
-            // Таблица игр
-            this.db.run(`
-                CREATE TABLE games (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    result TEXT NOT NULL,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
+                // Таблица игр
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS games (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        result TEXT NOT NULL,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Ошибка создания таблицы games:', err);
+                        reject(err);
+                    } else {
+                        console.log('Таблица games создана');
+                    }
+                });
 
-            // Таблица ставок
-            this.db.run(`
-                CREATE TABLE bets (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    game_id INTEGER,
-                    color TEXT NOT NULL,
-                    amount INTEGER NOT NULL,
-                    won BOOLEAN DEFAULT FALSE,
-                    winnings INTEGER DEFAULT 0,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id),
-                    FOREIGN KEY (game_id) REFERENCES games (id)
-                )
-            `);
+                // Таблица ставок
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS bets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER,
+                        game_id INTEGER,
+                        color TEXT NOT NULL,
+                        amount INTEGER NOT NULL,
+                        won BOOLEAN DEFAULT FALSE,
+                        winnings INTEGER DEFAULT 0,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users (id),
+                        FOREIGN KEY (game_id) REFERENCES games (id)
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Ошибка создания таблицы bets:', err);
+                        reject(err);
+                    } else {
+                        console.log('Таблица bets создана');
+                        resolve();
+                    }
+                });
+            });
         });
     }
 
@@ -54,8 +86,13 @@ class Database {
                 'INSERT INTO users (username, password) VALUES (?, ?)',
                 [username, hashedPassword],
                 function(err) {
-                    if (err) reject(err);
-                    else resolve({ id: this.lastID, username });
+                    if (err) {
+                        console.error('Ошибка создания пользователя:', err);
+                        reject(err);
+                    } else {
+                        console.log('Пользователь создан с ID:', this.lastID);
+                        resolve({ id: this.lastID, username });
+                    }
                 }
             );
         });
@@ -67,8 +104,12 @@ class Database {
                 'SELECT * FROM users WHERE username = ?',
                 [username],
                 (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
+                    if (err) {
+                        console.error('Ошибка получения пользователя:', err);
+                        reject(err);
+                    } else {
+                        resolve(row);
+                    }
                 }
             );
         });
@@ -80,8 +121,12 @@ class Database {
                 'SELECT id, username, balance FROM users WHERE id = ?',
                 [id],
                 (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
+                    if (err) {
+                        console.error('Ошибка получения пользователя по ID:', err);
+                        reject(err);
+                    } else {
+                        resolve(row);
+                    }
                 }
             );
         });
@@ -93,8 +138,12 @@ class Database {
                 'UPDATE users SET balance = ? WHERE id = ?',
                 [newBalance, userId],
                 (err) => {
-                    if (err) reject(err);
-                    else resolve();
+                    if (err) {
+                        console.error('Ошибка обновления баланса:', err);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
                 }
             );
         });
@@ -106,8 +155,13 @@ class Database {
                 'INSERT INTO games (result) VALUES (?)',
                 [result],
                 function(err) {
-                    if (err) reject(err);
-                    else resolve(this.lastID);
+                    if (err) {
+                        console.error('Ошибка создания игры:', err);
+                        reject(err);
+                    } else {
+                        console.log('Игра создана с ID:', this.lastID);
+                        resolve(this.lastID);
+                    }
                 }
             );
         });
@@ -119,8 +173,12 @@ class Database {
                 'SELECT * FROM games ORDER BY timestamp DESC LIMIT ?',
                 [limit],
                 (err, rows) => {
-                    if (err) reject(err);
-                    else resolve(rows);
+                    if (err) {
+                        console.error('Ошибка получения истории игр:', err);
+                        reject(err);
+                    } else {
+                        resolve(rows || []);
+                    }
                 }
             );
         });
@@ -132,8 +190,13 @@ class Database {
                 'INSERT INTO bets (user_id, game_id, color, amount) VALUES (?, ?, ?, ?)',
                 [userId, gameId, color, amount],
                 function(err) {
-                    if (err) reject(err);
-                    else resolve(this.lastID);
+                    if (err) {
+                        console.error('Ошибка создания ставки:', err);
+                        reject(err);
+                    } else {
+                        console.log('Ставка создана с ID:', this.lastID);
+                        resolve(this.lastID);
+                    }
                 }
             );
         });
@@ -145,8 +208,12 @@ class Database {
                 'UPDATE bets SET won = ?, winnings = ? WHERE id = ?',
                 [won, winnings, betId],
                 (err) => {
-                    if (err) reject(err);
-                    else resolve();
+                    if (err) {
+                        console.error('Ошибка обновления результата ставки:', err);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
                 }
             );
         });
@@ -162,8 +229,12 @@ class Database {
                 ORDER BY b.timestamp DESC 
                 LIMIT ?
             `, [userId, limit], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
+                if (err) {
+                    console.error('Ошибка получения ставок пользователя:', err);
+                    reject(err);
+                } else {
+                    resolve(rows || []);
+                }
             });
         });
     }
@@ -176,8 +247,12 @@ class Database {
                 JOIN users u ON b.user_id = u.id 
                 WHERE b.game_id = ?
             `, [gameId], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
+                if (err) {
+                    console.error('Ошибка получения ставок текущей игры:', err);
+                    reject(err);
+                } else {
+                    resolve(rows || []);
+                }
             });
         });
     }
