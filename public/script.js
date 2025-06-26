@@ -1,3 +1,29 @@
+// Отладочная информация
+console.log('Script.js загружен');
+
+// Проверка доступности элементов при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded');
+    
+    // Проверяем наличие ключевых элементов
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const authError = document.getElementById('authError');
+    
+    console.log('LoginForm:', loginForm ? 'найден' : 'НЕ НАЙДЕН');
+    console.log('RegisterForm:', registerForm ? 'найден' : 'НЕ НАЙДЕН');
+    console.log('AuthError:', authError ? 'найден' : 'НЕ НАЙДЕН');
+    
+    // Тестируем switchTab функцию
+    window.testSwitchTab = function() {
+        console.log('Testing switchTab function');
+        switchTab('register');
+        setTimeout(() => switchTab('login'), 1000);
+    };
+    
+    console.log('Для тестирования переключения вкладок выполните: testSwitchTab()');
+});
+
 class RouletteGame {
     constructor() {
         this.socket = io();
