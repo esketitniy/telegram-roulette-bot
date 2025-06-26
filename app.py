@@ -7,11 +7,15 @@ import time
 import threading
 from datetime import datetime, timedelta
 import os
+from config import config
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///roulette.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+config_name = os.environ.get('FLASK_ENV', 'development')
+app.config.from_object(config[config_name])
 
 # Инициализация расширений
 db.init_app(app)
@@ -115,7 +119,7 @@ def place_bet():
         return jsonify({'success': False, 'message': 'Неверный тип ставки'})
     
     # Определяем потенциальный выигрыш
-    multipliers = {'red': 2, 'black': 2, 'green': 36}
+    multipliers = app.config['PAYOUT_MULTIPLIERS']
     potential_win = amount * multipliers[bet_type]
     
     # Создаём ставку
