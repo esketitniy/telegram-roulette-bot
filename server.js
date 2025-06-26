@@ -1,0 +1,276 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const cors = require('cors');
+const Database = require('./database');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+const db = new Database();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// Игровые переменные
+let gameState = {
+    phase: 'betting', // 'betting' | 'spinning' | 'result'
+    timeLeft: 30,
+    currentGameId: null,
+    bets: []
+};
+
+const colors = ['red', 'black', 'green'];
+const colorMultipliers = { red: 2, black: 2, green: 14 };
+
+// Middleware для проверки JWT
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.sendStatus(401);
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+// API маршруты
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Логин и пароль обязательны' });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
+        }
+
+        const user = await db.createUser(username, password);
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+        
+        res.json({ token, user: { id: user.id, username: user.username, balance: 1000 } });
+    } catch (error) {
+        if (error.code === 'SQLITE_CONSTRAINT') {
+            res.status(400).json({ error: 'Пользователь с таким логином уже существует' });
+        } else {
+            res.status(500).json({ error: 'Ошибка сервера' });
+        }
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await db.getUser(username);
+
+        if (!user || !bcrypt.compareSync(password, user.password)) {
+            return res.status(401).json({ error: 'Неверный логин или пароль' });
+        }
+
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+        res.json({ 
+            token, 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                balance: user.balance 
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+app.get('/api/profile', authenticateToken, async (req, res) => {
+    try {
+        const user = await db.getUserById(req.user.id);
+        const bets = await db.getUserBets(req.user.id);
+        res.json({ user, bets });
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+app.get('/api/history', async (req, res) => {
+    try {
+        const games = await db.getLastGames();
+        res.json(games);
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// WebSocket обработка
+io.on('connection', (socket) => {
+    console.log('Пользователь подключился:', socket.id);
+
+    // Отправка текущего состояния игры
+    socket.emit('gameState', gameState);
+
+    // Обработка ставок
+    socket.on('placeBet', async (data) => {
+        try {
+            const { token, color, amount } = data;
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const user = await db.getUserById(decoded.id);
+
+            if (!user) {
+                socket.emit('error', 'Пользователь не найден');
+                return;
+            }
+
+            if (gameState.phase !== 'betting') {
+                socket.emit('error', 'Ставки сейчас не принимаются');
+                return;
+            }
+
+            if (amount <= 0 || amount > user.balance) {
+                socket.emit('error', 'Недостаточно средств');
+                return;
+            }
+
+            if (!colors.includes(color)) {
+                socket.emit('error', 'Неверный цвет');
+                return;
+            }
+
+            // Создание ставки
+            const betId = await db.createBet(decoded.id, gameState.currentGameId, color, amount);
+            
+            // Обновление баланса
+            await db.updateBalance(decoded.id, user.balance - amount);
+
+            const bet = {
+                id: betId,
+                username: user.username,
+                color,
+                amount,
+                userId: decoded.id
+            };
+
+            gameState.bets.push(bet);
+
+            // Уведомление всех о новой ставке
+            io.emit('newBet', bet);
+            
+            // Обновление баланса пользователя
+            socket.emit('balanceUpdate', user.balance - amount);
+
+        } catch (error) {
+            socket.emit('error', 'Ошибка при размещении ставки');
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Пользователь отключился:', socket.id);
+    });
+});
+
+// Игровой цикл
+async function gameLoop() {
+    // Фаза ставок (30 секунд)
+    gameState.phase = 'betting';
+    gameState.timeLeft = 30;
+    gameState.currentGameId = Date.now(); // Временный ID
+    gameState.bets = [];
+
+    io.emit('gameState', gameState);
+
+    const bettingInterval = setInterval(() => {
+        gameState.timeLeft--;
+        io.emit('timeUpdate', gameState.timeLeft);
+
+        if (gameState.timeLeft <= 0) {
+            clearInterval(bettingInterval);
+            spinRoulette();
+        }
+    }, 1000);
+}
+
+async function spinRoulette() {
+    // Фаза вращения (10 секунд)
+    gameState.phase = 'spinning';
+    gameState.timeLeft = 10;
+
+    io.emit('gameState', gameState);
+    io.emit('spinStart');
+
+    setTimeout(async () => {
+        // Генерация результата
+        const random = Math.random();
+        let result;
+        
+        if (random < 0.02) { // 2% для зеленого
+            result = 'green';
+        } else if (random < 0.51) { // 49% для красного
+            result = 'red';
+        } else { // 49% для черного
+            result = 'black';
+        }
+
+        // Сохранение игры в БД
+        const gameId = await db.createGame(result);
+
+        // Обновление ID игры для ставок
+        for (const bet of gameState.bets) {
+            await db.createBet(bet.userId, gameId, bet.color, bet.amount);
+        }
+
+        // Обработка ставок
+        await processBets(result, gameId);
+
+        gameState.phase = 'result';
+        io.emit('spinResult', result);
+        io.emit('gameState', gameState);
+
+        // Пауза перед новой игрой
+        setTimeout(() => {
+            gameLoop();
+        }, 5000);
+
+    }, 10000);
+}
+
+async function processBets(result, gameId) {
+    for (const bet of gameState.bets) {
+        const won = bet.color === result;
+        const winnings = won ? bet.amount * colorMultipliers[bet.color] : 0;
+
+        // Обновление результата ставки в БД
+        await db.updateBetResult(bet.id, won, winnings);
+
+        if (won) {
+            // Обновление баланса пользователя
+            const user = await db.getUserById(bet.userId);
+            await db.updateBalance(bet.userId, user.balance + winnings);
+        }
+    }
+
+    // Отправка результатов всем пользователям
+    io.emit('betsResult', { result, bets: gameState.bets });
+}
+
+// Запуск игрового цикла
+gameLoop();
+
+server.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
+});
