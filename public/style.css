@@ -769,3 +769,113 @@ body {
         max-width: calc(100vw - 20px) !important;
     }
 }
+
+/* Анимация загрузки */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Улучшения для мобильных устройств */
+@media (max-width: 768px) {
+    .auth-container {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .header {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .roulette-wheel {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .bet-buttons {
+        gap: 0.5rem;
+    }
+    
+    .bet-btn {
+        padding: 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Состояния подключения */
+.connection-status {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    z-index: 1000;
+    transition: all 0.3s;
+}
+
+.connection-status.connected {
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+}
+
+.connection-status.disconnected {
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+}
+
+.connection-status.connecting {
+    background: rgba(255, 193, 7, 0.9);
+    color: black;
+}
+
+/* Плавные переходы */
+.screen {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Улучшения форм */
+.auth-form input:invalid {
+    border-color: rgba(244, 67, 54, 0.5);
+}
+
+.auth-form input:valid {
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+/* Hover эффекты */
+.bet-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Пульсация для активных элементов */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.bet-btn.selected {
+    animation: pulse 2s infinite;
+}
