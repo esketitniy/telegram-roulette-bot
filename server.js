@@ -54,7 +54,6 @@ const authenticateToken = (req, res, next) => {
 };
 
 // API маршруты
-// Добавьте эти проверки в API маршруты
 app.post('/api/register', async (req, res) => {
     try {
         if (!dbInitialized) {
@@ -91,8 +90,8 @@ app.post('/api/register', async (req, res) => {
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
         
         console.log('Пользователь успешно зарегистрирован:', user.id);
+        
         res.json({ 
-            token,res.json({ 
             token, 
             user: { 
                 id: user.id, 
@@ -145,6 +144,7 @@ app.post('/api/login', async (req, res) => {
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
         
         console.log('Пользователь успешно вошел:', user.id);
+        
         res.json({ 
             token, 
             user: { 
@@ -167,6 +167,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 
         const user = await db.getUserById(req.user.id);
         const bets = await db.getUserBets(req.user.id);
+        
         res.json({ user, bets });
     } catch (error) {
         console.error('Ошибка получения профиля:', error);
@@ -178,7 +179,8 @@ app.get('/api/history', async (req, res) => {
     try {
         const games = await db.getLastGames();
         res.json(games);
-    } catch (error) {console.error('Ошибка получения истории:', error);
+    } catch (error) {
+        console.error('Ошибка получения истории:', error);
         res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
     }
 });
@@ -224,7 +226,7 @@ io.on('connection', (socket) => {
 
             // Создание ставки (временная, будет сохранена в БД позже)
             const bet = {
-                id: Date.now() + Math.random(), // Временный ID
+                id: Date.now() + Math.random(),
                 username: user.username,
                 color,
                 amount,
@@ -265,7 +267,7 @@ async function gameLoop() {
         // Фаза ставок (30 секунд)
         gameState.phase = 'betting';
         gameState.timeLeft = 30;
-        gameState.currentGameId = Date.now(); // Временный ID
+        gameState.currentGameId = Date.now();
         gameState.bets = [];
 
         console.log('Начало новой игры, фаза ставок');
@@ -329,7 +331,6 @@ async function spinRoulette() {
 
             } catch (error) {
                 console.error('Ошибка при обработке результата:', error);
-                // Перезапуск игрового цикла в случае ошибки
                 setTimeout(gameLoop, 5000);
             }
         }, 10000);
