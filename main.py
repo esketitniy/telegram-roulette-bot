@@ -648,12 +648,22 @@ def online_game_engine():
     """Непрерывный игровой движок с точным таймингом"""
     print("🎮 Live Casino Engine Started")
     
+    # Инициализируем первый раунд
+    game_state['round'] = 0
+    game_state['phase'] = 'betting'
+    game_state['time_left'] = 30
+    game_state['bets'] = {}
+    game_state['last_result'] = None
+    game_state['spinning_result'] = None
+    
     while True:
         try:
             # Новый раунд
-            round_start_time = time.time()
             game_state['round'] += 1
             game_state['bets'] = {}
+            game_state['spinning_result'] = None
+            
+            print(f"🎰 Round {game_state['round']} - Starting")
             
             # ФАЗА СТАВОК (30 секунд)
             game_state['phase'] = 'betting'
@@ -666,10 +676,10 @@ def online_game_engine():
                 time.sleep(1)
             
             # ЗАКРЫТИЕ СТАВОК
-            game_state['phase'] = 'spinning'
             print(f"🚫 Round {game_state['round']} - Betting Closed")
             
             # ФАЗА ВРАЩЕНИЯ (8 секунд)
+            game_state['phase'] = 'spinning'
             spinning_duration = 8
             
             # Генерируем результат заранее
@@ -713,6 +723,8 @@ def online_game_engine():
             
         except Exception as e:
             print(f"❌ Game engine error: {e}")
+            import traceback
+            traceback.print_exc()
             time.sleep(2)
 
 def process_round_bets(result_number, result_color):
