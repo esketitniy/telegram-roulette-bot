@@ -13,19 +13,19 @@
             <div class="auth-container">
                 <h1>Онлайн Рулетка</h1>
                 <div class="auth-tabs">
-                    <button class="tab-btn active" onclick="switchTab('login')">Вход</button>
-                    <button class="tab-btn" onclick="switchTab('register')">Регистрация</button>
+                    <button type="button" class="tab-btn active" onclick="switchTab('login')">Вход</button>
+                    <button type="button" class="tab-btn" onclick="switchTab('register')">Регистрация</button>
                 </div>
 
                 <form id="loginForm" class="auth-form active">
-                    <input type="text" id="loginUsername" placeholder="Логин" required>
-                    <input type="password" id="loginPassword" placeholder="Пароль" required>
+                    <input type="text" id="loginUsername" placeholder="Логин" required autocomplete="username">
+                    <input type="password" id="loginPassword" placeholder="Пароль" required autocomplete="current-password">
                     <button type="submit">Войти</button>
                 </form>
 
                 <form id="registerForm" class="auth-form">
-                    <input type="text" id="registerUsername" placeholder="Логин" required>
-                    <input type="password" id="registerPassword" placeholder="Пароль (мин. 6 символов)" required>
+                    <input type="text" id="registerUsername" placeholder="Логин (мин. 3 символа)" required autocomplete="username">
+                    <input type="password" id="registerPassword" placeholder="Пароль (мин. 6 символов)" required autocomplete="new-password">
                     <button type="submit">Зарегистрироваться</button>
                 </form>
 
@@ -45,11 +45,11 @@
                 </div>
                 <div class="header-right">
                     <div class="user-info">
-                        <span id="username"></span>
+                        <span id="username">Загрузка...</span>
                         <span class="balance">Баланс: <span id="balance">0</span></span>
                     </div>
-                    <button id="profileBtn" class="profile-btn">Профиль</button>
-                    <button id="logoutBtn" class="logout-btn">Выход</button>
+                    <button type="button" id="profileBtn" class="profile-btn">Профиль</button>
+                    <button type="button" id="logoutBtn" class="logout-btn">Выход</button>
                 </div>
             </header>
 
@@ -79,17 +79,17 @@
                 <!-- Панель ставок -->
                 <div class="betting-panel">
                     <div class="bet-buttons">
-                        <button class="bet-btn red" data-color="red">
+                        <button type="button" class="bet-btn red" data-color="red">
                             <span class="bet-color"></span>
                             <span class="bet-label">Красное</span>
                             <span class="bet-multiplier">x2</span>
                         </button>
-                        <button class="bet-btn black" data-color="black">
+                        <button type="button" class="bet-btn black" data-color="black">
                             <span class="bet-color"></span>
                             <span class="bet-label">Черное</span>
                             <span class="bet-multiplier">x2</span>
                         </button>
-                        <button class="bet-btn green" data-color="green">
+                        <button type="button" class="bet-btn green" data-color="green">
                             <span class="bet-color"></span>
                             <span class="bet-label">Зеленое</span>
                             <span class="bet-multiplier">x14</span>
@@ -97,8 +97,8 @@
                     </div>
 
                     <div class="bet-input-section">
-                        <input type="number" id="betAmount" placeholder="Сумма ставки" min="1" max="1000">
-                        <button id="placeBetBtn" class="place-bet-btn" disabled>Сделать ставку</button>
+                        <input type="number" id="betAmount" placeholder="Сумма ставки" min="1" max="10000" step="1">
+                        <button type="button" id="placeBetBtn" class="place-bet-btn" disabled>Сделать ставку</button>
                     </div>
                 </div>
 
@@ -106,11 +106,15 @@
                 <div class="info-panels">
                     <div class="panel">
                         <h3>История игр</h3>
-                        <div id="gameHistory" class="history-list"></div>
+                        <div id="gameHistory" class="history-list">
+                            <p>Загрузка истории...</p>
+                        </div>
                     </div>
                     <div class="panel">
                         <h3>Текущие ставки</h3>
-                        <div id="currentBets" class="bets-list"></div>
+                        <div id="currentBets" class="bets-list">
+                            <p>Ставок пока нет</p>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -128,7 +132,9 @@
                     </div>
                 </div>
                 <h3>История ставок</h3>
-                <div id="userBets" class="user-bets-list"></div>
+                <div id="userBets" class="user-bets-list">
+                    <p>Загрузка истории ставок...</p>
+                </div>
             </div>
         </div>
     </div>
