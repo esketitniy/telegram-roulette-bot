@@ -1822,7 +1822,7 @@ def game():
     </script>
 </body>
 </html>
-'''
+''')
                                   
 # API endpoints
 @app.route('/api/status')
