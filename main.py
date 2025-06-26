@@ -20,6 +20,17 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 
+# Глобальное игровое состояние
+game_state = {
+    'round': 0,
+    'phase': 'betting',
+    'time_left': 30,
+    'bets': {},
+    'last_result': None,
+    'spinning_result': None,
+    'start_time': time.time()
+}
+
 # Определяем путь к базе данных
 DB_PATH = '/data/casino_online.db' if os.path.exists('/data') else 'casino_online.db'
 
@@ -188,39 +199,45 @@ game_state = {
 }
 
 # База данных
-def init_background_services():
-    """Инициализация фоновых сервисов"""
-    print(f"📁 Database path: {DB_PATH}")
+def init_application():
+    """Инициализация приложения"""
+    print("🎰 Initializing Live Casino...")
     
-    # Инициализация базы данных на диске
-    if ensure_database():
-        print("✅ Database initialized on persistent disk")
-    else:
+    # Инициализация БД
+    if not ensure_database():
         print("❌ Database initialization failed")
+        return False
     
-    # Устанавливаем время запуска
-    game_state['start_time'] = time.time()
+    print("✅ Database initialized")
+    
+    # Инициализация игрового состояния
+    global game_state
+    game_state = {
+        'round': 0,
+        'phase': 'betting',
+        'time_left': 30,
+        'bets': {},
+        'last_result': None,
+        'spinning_result': None,
+        'start_time': time.time()
+    }
     
     # Запуск игрового движка
-    game_engine_thread = threading.Thread(target=online_game_engine)
-    game_engine_thread.daemon = True
-    game_engine_thread.start()
-    print("✅ Online game engine started")
+    try:
+        game_thread = threading.Thread(target=online_game_engine, daemon=True)
+        game_thread.start()
+        print("✅ Game engine started")
+        
+        # Даем время движку запуститься
+        time.sleep(1)
+        
+    except Exception as e:
+        print(f"❌ Failed to start game engine: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
     
-    # Запуск очистки неактивных игроков
-    cleanup_thread = threading.Thread(target=cleanup_inactive_players)
-    cleanup_thread.daemon = True
-    cleanup_thread.start()
-    print("✅ Cleanup service started")
-    
-    # Запуск Telegram бота
-    if BOT_TOKEN and BOT_TOKEN != 'YOUR_BOT_TOKEN':
-        bot_thread = threading.Thread(target=run_bot)
-        bot_thread.daemon = True
-        bot_thread.start()
-        print("✅ Telegram bot started")
-    else:
-        print("⚠️  BOT_TOKEN not configured")
+    return True
 
 def get_user(telegram_id):
     """Получение пользователя с отладкой"""
