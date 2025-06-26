@@ -2124,14 +2124,6 @@ def api_game_state():
             'message': str(e)
         })
 
-@app.route('/api/game_state')
-def api_game_state():
-    return jsonify({
-        'game_state': game_state,
-        'online_players': online_players,
-        'current_bets': current_bets,
-        'timestamp': datetime.now().isoformat()
-    })
 
 @app.route('/api/players')
 def api_players():
