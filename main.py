@@ -2905,7 +2905,12 @@ def cleanup_inactive_players():
             time.sleep(60)
             
 if __name__ == '__main__':
-    print("🌐 Starting Online Casino Server...")
+    if init_application():
+        port = int(os.environ.get('PORT', 5000))
+        print(f"🚀 Starting Live Casino on port {port}...")
+        app.run(host='0.0.0.0', port=port, debug=False)
+    else:
+        print("❌ Failed to initialize application")
     
     # Устанавливаем время запуска
     game_state['start_time'] = time.time()
