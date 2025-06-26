@@ -769,10 +769,6 @@ def process_round_bets(result_number, result_color):
     except Exception as e:
         print(f"❌ Error processing bets: {e}")
 
-
-# Flask маршруты
-# Добавьте в раздел "ROUTES" перед API endpoints
-
 @app.route('/')
 def index():
     """Главная страница казино"""
@@ -1035,7 +1031,7 @@ def index():
 
         /* Зона ставок */
         .betting-area {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
             background: rgba(0, 0, 0, 0.3);
             padding: 30px;
@@ -1046,154 +1042,132 @@ def index():
         .betting-title {
             text-align: center;
             font-size: 1.8em;
-            margin-bottom: 20px;
-            color: #ffd700;
-        }
-
-        .bet-amount-selector {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
             margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-
-        .bet-amount-btn {
-            background: rgba(255, 215, 0, 0.2);
             color: #ffd700;
+        }
+
+        /* Поле ввода ставки */
+        .bet-input-section {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .bet-input-label {
+            display: block;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+
+        .bet-amount-input {
+            width: 200px;
+            padding: 15px;
             border: 2px solid #ffd700;
-            padding: 10px 20px;
             border-radius: 10px;
-            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 18px;
+            text-align: center;
             transition: all 0.3s;
-            font-weight: bold;
         }
 
-        .bet-amount-btn:hover,
-        .bet-amount-btn.active {
-            background: #ffd700;
-            color: black;
-            transform: scale(1.05);
+        .bet-amount-input:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            border-color: #ffed4e;
         }
 
-        .betting-options {
+        /* Выбор цвета */
+        .color-selection {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
         }
 
-        .bet-option {
+        .color-option {
             background: rgba(255, 255, 255, 0.1);
-            border: 2px solid transparent;
+            border: 3px solid transparent;
             border-radius: 15px;
-            padding: 20px;
+            padding: 30px 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
             font-weight: bold;
-            font-size: 16px;
-        }
-
-        .bet-option:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .bet-option.red {
-            background: linear-gradient(135deg, #ff4757, #ff3742);
-            color: white;
-        }
-
-        .bet-option.black {
-            background: linear-gradient(135deg, #2f3542, #40424a);
-            color: white;
-        }
-
-        .bet-option.green {
-            background: linear-gradient(135deg, #26de81, #20bf6b);
-            color: white;
-        }
-
-        .bet-option.selected {
-            border-color: #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-        }
-
-        .numbers-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 8px;
-            margin-top: 20px;
-        }
-
-        .number-bet {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            padding: 15px 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: bold;
-            min-height: 50px;
+            font-size: 18px;
+            min-height: 120px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
 
-        .number-bet:hover {
-            transform: scale(1.05);
-            border-color: #ffd700;
+        .color-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
         }
 
-        .number-bet.red {
-            background: rgba(255, 0, 0, 0.3);
-            color: #ff6b6b;
-        }
-
-        .number-bet.black {
-            background: rgba(0, 0, 0, 0.5);
+        .color-option.red {
+            background: linear-gradient(135deg, #ff4757, #ff3742);
             color: white;
         }
 
-        .number-bet.green {
-            background: rgba(0, 128, 0, 0.3);
-            color: #51cf66;
+        .color-option.black {
+            background: linear-gradient(135deg, #2f3542, #40424a);
+            color: white;
         }
 
-        .number-bet.selected {
+        .color-option.green {
+            background: linear-gradient(135deg, #26de81, #20bf6b);
+            color: white;
+        }
+
+        .color-option.selected {
             border-color: #ffd700;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            transform: scale(1.05);
         }
 
-        .place-bet-btn {
+        .color-emoji {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .color-multiplier {
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        /* Кнопка ставки */
+        .bet-button {
             width: 100%;
             background: linear-gradient(45deg, #d4af37, #ffd700);
             color: black;
             border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 18px;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 20px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            margin-top: 20px;
+            text-transform: uppercase;
         }
 
-        .place-bet-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3);
+        .bet-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(255, 215, 0, 0.4);
         }
 
-        .place-bet-btn:disabled {
+        .bet-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.5);
         }
 
         /* Результаты */
         .results-section {
-            max-width: 800px;
+            max-width: 600px;
             margin: 40px auto 0;
             background: rgba(0, 0, 0, 0.3);
             padding: 20px;
@@ -1216,8 +1190,8 @@ def index():
         }
 
         .result-number {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1225,6 +1199,7 @@ def index():
             font-weight: bold;
             color: white;
             border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: 18px;
         }
 
         .result-number.red {
@@ -1234,7 +1209,7 @@ def index():
         .result-number.black {
             background: #000000;
         }
-        
+
         .result-number.green {
             background: #008000;
         }
@@ -1251,16 +1226,13 @@ def index():
                 height: 260px;
             }
 
-            .betting-options {
-                grid-template-columns: repeat(2, 1fr);
+            .color-selection {
+                grid-template-columns: 1fr;
+                gap: 15px;
             }
 
-            .numbers-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-
-            .bet-amount-selector {
-                grid-template-columns: repeat(3, 1fr);
+            .bet-amount-input {
+                width: 150px;
             }
         }
 
@@ -1289,6 +1261,7 @@ def index():
             border-left: 4px solid #ffd700;
             z-index: 1000;
             backdrop-filter: blur(10px);
+            max-width: 300px;
         }
 
         .notification.success {
@@ -1301,8 +1274,12 @@ def index():
 
         @keyframes pulse {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.05); }
             100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 1s infinite;
         }
     </style>
 </head>
@@ -1373,47 +1350,43 @@ def index():
 
         <!-- Зона ставок -->
         <div class="betting-area">
-            <h2 class="betting-title">Выберите ставку</h2>
+            <h2 class="betting-title">🎯 Сделайте ставку</h2>
             
-            <!-- Выбор суммы ставки -->
-            <div class="bet-amount-selector" id="betAmounts">
-                <button class="bet-amount-btn active" data-amount="10">10</button>
-                <button class="bet-amount-btn" data-amount="25">25</button>
-                <button class="bet-amount-btn" data-amount="50">50</button>
-                <button class="bet-amount-btn" data-amount="100">100</button>
-                <button class="bet-amount-btn" data-amount="250">250</button>
-                <button class="bet-amount-btn" data-amount="500">500</button>
+            <!-- Поле ввода суммы ставки -->
+            <div class="bet-input-section">
+                <label class="bet-input-label">Размер ставки:</label>
+                <input type="number" class="bet-amount-input" id="betAmountInput" 
+                       min="1" max="10000" value="10" 
+                       placeholder="Введите сумму">
             </div>
 
-            <!-- Основные ставки -->
-            <div class="betting-options">
-                <div class="bet-option red" data-bet="red">
-                    <div>🔴 КРАСНОЕ</div>
-                    <div>x2</div>
+            <!-- Выбор цвета -->
+            <div class="color-selection">
+                <div class="color-option red" data-color="red">
+                    <div class="color-emoji">🔴</div>
+                    <div>КРАСНОЕ</div>
+                    <div class="color-multiplier">x2</div>
                 </div>
-                <div class="bet-option black" data-bet="black">
-                    <div>⚫ ЧЕРНОЕ</div>
-                    <div>x2</div>
+                <div class="color-option black" data-color="black">
+                    <div class="color-emoji">⚫</div>
+                    <div>ЧЕРНОЕ</div>
+                    <div class="color-multiplier">x2</div>
                 </div>
-                <div class="bet-option green" data-bet="green">
-                    <div>🟢 ЗЕЛЕНОЕ</div>
-                    <div>x14</div>
+                <div class="color-option green" data-color="green">
+                    <div class="color-emoji">🟢</div>
+                    <div>ЗЕЛЕНОЕ</div>
+                    <div class="color-multiplier">x14</div>
                 </div>
             </div>
 
-            <!-- Ставки на числа -->
-            <div class="numbers-grid" id="numbersGrid">
-                <!-- Генерируется JavaScript -->
-            </div>
-
-            <button class="place-bet-btn" id="placeBetBtn" onclick="placeBet()" disabled>
-                Сделать ставку
+            <button class="bet-button" id="betButton" onclick="placeBet()" disabled>
+                Выберите цвет
             </button>
         </div>
 
         <!-- Последние результаты -->
         <div class="results-section">
-            <h3 class="results-title">Последние результаты</h3>
+            <h3 class="results-title">📊 Последние результаты</h3>
             <div class="recent-results" id="recentResults">
                 <!-- Генерируется JavaScript -->
             </div>
@@ -1424,8 +1397,7 @@ def index():
         // Глобальные переменные
         let currentUser = null;
         let sessionToken = null;
-        let selectedBetType = null;
-        let selectedBetAmount = 10;
+        let selectedColor = null;
         let gameState = {};
         let gameUpdateInterval = null;
         let recentResults = [];
@@ -1440,7 +1412,6 @@ def index():
         document.addEventListener('DOMContentLoaded', function() {
             checkExistingSession();
             setupEventListeners();
-            generateNumbersGrid();
             generateRouletteWheel();
         });
 
@@ -1508,21 +1479,16 @@ def index():
                 register();
             });
 
-            // Выбор суммы ставки
-            document.querySelectorAll('.bet-amount-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.bet-amount-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    selectedBetAmount = parseInt(this.dataset.amount);
-                    updateBetButton();
+            // Выбор цвета
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    selectColor(this.dataset.color);
                 });
             });
 
-            // Выбор типа ставки
-            document.querySelectorAll('.bet-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    selectBetType(this.dataset.bet);
-                });
+            // Поле ввода ставки
+            document.getElementById('betAmountInput').addEventListener('input', function() {
+                updateBetButton();
             });
         }
 
@@ -1647,37 +1613,6 @@ def index():
             }
         }
 
-        // Генерация сетки чисел
-        function generateNumbersGrid() {
-            const numbersGrid = document.getElementById('numbersGrid');
-            const numbers = [
-                { num: 0, color: 'green' },
-                { num: 1, color: 'red' }, { num: 2, color: 'black' }, { num: 3, color: 'red' },
-                { num: 4, color: 'black' }, { num: 5, color: 'red' }, { num: 6, color: 'black' },
-                { num: 7, color: 'red' }, { num: 8, color: 'black' }, { num: 9, color: 'red' },
-                { num: 10, color: 'black' }, { num: 11, color: 'black' }, { num: 12, color: 'red' },
-                { num: 13, color: 'black' }, { num: 14, color: 'red' }, { num: 15, color: 'black' },
-                { num: 16, color: 'red' }, { num: 17, color: 'black' }, { num: 18, color: 'red' },
-                { num: 19, color: 'red' }, { num: 20, color: 'black' }, { num: 21, color: 'red' },
-                { num: 22, color: 'black' }, { num: 23, color: 'red' }, { num: 24, color: 'black' },
-                { num: 25, color: 'red' }, { num: 26, color: 'black' }, { num: 27, color: 'red' },
-                { num: 28, color: 'black' }, { num: 29, color: 'black' }, { num: 30, color: 'red' },
-                { num: 31, color: 'black' }, { num: 32, color: 'red' }, { num: 33, color: 'black' },
-                { num: 34, color: 'red' }, { num: 35, color: 'black' }, { num: 36, color: 'red' }
-            ];
-
-            numbers.forEach(({ num, color }) => {
-                const numberDiv = document.createElement('div');
-                numberDiv.className = `number-bet ${color}`;
-                numberDiv.dataset.bet = num.toString();
-                numberDiv.textContent = num;
-                numberDiv.addEventListener('click', function() {
-                    selectBetType(this.dataset.bet);
-                });
-                numbersGrid.appendChild(numberDiv);
-            });
-        }
-
         // Генерация колеса рулетки
         function generateRouletteWheel() {
             const wheelInner = document.getElementById('wheelInner');
@@ -1703,54 +1638,67 @@ def index():
             });
         }
 
-        // Выбор типа ставки
-        function selectBetType(betType) {
-            // Убираем выделение со всех опций
-            document.querySelectorAll('.bet-option, .number-bet').forEach(option => {
+        // Выбор цвета
+        function selectColor(color) {
+            // Убираем выделение со всех цветов
+            document.querySelectorAll('.color-option').forEach(option => {
                 option.classList.remove('selected');
             });
 
-            // Выделяем выбранную опцию
-            const selectedElement = document.querySelector(`[data-bet="${betType}"]`);
+            // Выделяем выбранный цвет
+            const selectedElement = document.querySelector(`[data-color="${color}"]`);
             if (selectedElement) {
                 selectedElement.classList.add('selected');
             }
 
-            selectedBetType = betType;
+            selectedColor = color;
             updateBetButton();
         }
 
         // Обновление кнопки ставки
         function updateBetButton() {
-            const betBtn = document.getElementById('placeBetBtn');
+            const betBtn = document.getElementById('betButton');
+            const betAmount = parseInt(document.getElementById('betAmountInput').value) || 0;
             
-            if (selectedBetType && selectedBetAmount && gameState.phase === 'betting') {
-                betBtn.disabled = false;
-                betBtn.textContent = `Поставить ${selectedBetAmount} на ${getBetDisplayName(selectedBetType)}`;
+            if (selectedColor && betAmount > 0 && gameState.phase === 'betting') {
+                if (currentUser && betAmount <= currentUser.balance) {
+                    betBtn.disabled = false;
+                    betBtn.textContent = `BET ${betAmount} на ${getColorName(selectedColor)}`;
+                    betBtn.classList.remove('pulse');
+                } else {
+                    betBtn.disabled = true;
+                    betBtn.textContent = 'Недостаточно средств';
+                }
             } else {
                 betBtn.disabled = true;
                 if (gameState.phase !== 'betting') {
                     betBtn.textContent = 'Ставки закрыты';
+                } else if (!selectedColor) {
+                    betBtn.textContent = 'Выберите цвет';
+                } else if (betAmount <= 0) {
+                    betBtn.textContent = 'Введите сумму ставки';
                 } else {
-                    betBtn.textContent = 'Выберите ставку';
+                    betBtn.textContent = 'Сделайте ставку';
                 }
             }
         }
 
-        // Получить отображаемое имя ставки
-        function getBetDisplayName(betType) {
-            switch(betType) {
+        // Получить название цвета
+        function getColorName(color) {
+            switch(color) {
                 case 'red': return 'КРАСНОЕ';
                 case 'black': return 'ЧЕРНОЕ';
                 case 'green': return 'ЗЕЛЕНОЕ';
-                default: return `число ${betType}`;
+                default: return color;
             }
         }
 
         // Размещение ставки
         function placeBet() {
-            if (!selectedBetType || !selectedBetAmount || !sessionToken) {
-                showNotification('Выберите тип ставки и сумму', 'error');
+            const betAmount = parseInt(document.getElementById('betAmountInput').value);
+            
+            if (!selectedColor || !betAmount || !sessionToken) {
+                showNotification('Выберите цвет и введите сумму ставки', 'error');
                 return;
             }
 
@@ -1759,7 +1707,12 @@ def index():
                 return;
             }
 
-            if (currentUser.balance < selectedBetAmount) {
+            if (betAmount <= 0) {
+                showNotification('Сумма ставки должна быть больше 0', 'error');
+                return;
+            }
+
+            if (currentUser.balance < betAmount) {
                 showNotification('Недостаточно средств', 'error');
                 return;
             }
@@ -1771,8 +1724,8 @@ def index():
                 },
                 body: JSON.stringify({
                     session_token: sessionToken,
-                    bet_type: selectedBetType,
-                    bet_amount: selectedBetAmount
+                    bet_type: selectedColor,
+                    bet_amount: betAmount
                 })
             })
             .then(response => response.json())
@@ -1780,11 +1733,11 @@ def index():
                 if (data.success) {
                     currentUser.balance = data.new_balance;
                     updateUserInfo();
-                    showNotification(`Ставка размещена: ${selectedBetAmount} на ${getBetDisplayName(selectedBetType)}`, 'success');
+                    showNotification(`Ставка размещена: ${betAmount} на ${getColorName(selectedColor)}`, 'success');
                     
                     // Сбрасываем выбор
-                    selectedBetType = null;
-                    document.querySelectorAll('.bet-option, .number-bet').forEach(option => {
+                    selectedColor = null;
+                    document.querySelectorAll('.color-option').forEach(option => {
                         option.classList.remove('selected');
                     });
                     updateBetButton();
@@ -1880,25 +1833,6 @@ def index():
         function showSpinResult(result) {
             const resultText = `Выпало: ${result.number} (${getColorName(result.color)})`;
             showNotification(resultText, 'success');
-            
-            // Добавляем эффект подсветки результата
-            const resultElements = document.querySelectorAll(`[data-bet="${result.number}"]`);
-            resultElements.forEach(element => {
-                element.style.boxShadow = '0 0 20px #ffd700';
-                setTimeout(() => {
-                    element.style.boxShadow = '';
-                }, 2000);
-            });
-        }
-
-        // Получить название цвета
-        function getColorName(color) {
-            switch(color) {
-                case 'red': return 'КРАСНОЕ';
-                case 'black': return 'ЧЕРНОЕ';
-                case 'green': return 'ЗЕЛЕНОЕ';
-                default: return color;
-            }
         }
 
         // Обновление UI игры
@@ -1922,14 +1856,14 @@ def index():
             if (gameState.phase === 'betting') {
                 if (gameState.time_left <= 5) {
                     timer.style.color = '#ff4757';
-                    timer.style.animation = 'pulse 1s infinite';
+                    timer.classList.add('pulse');
                 } else {
                     timer.style.color = '#ffd700';
-                    timer.style.animation = 'none';
+                    timer.classList.remove('pulse');
                 }
             } else {
                 timer.style.color = '#ffd700';
-                timer.style.animation = 'none';
+                timer.classList.remove('pulse');
             }
         }
 
@@ -1958,7 +1892,7 @@ def index():
                 const resultDiv = document.createElement('div');
                 resultDiv.className = `result-number ${result.color}`;
                 resultDiv.textContent = result.number;
-                resultDiv.title = `Раунд ${result.round}`;
+                resultDiv.title = `Раунд ${result.round}: ${result.number} (${getColorName(result.color)})`;
                 resultsContainer.appendChild(resultDiv);
             });
         }
@@ -2001,15 +1935,15 @@ def index():
             
             document.body.appendChild(notification);
             
-            // Автоматически удаляем через 3 секунды
+            // Автоматически удаляем через 4 секунды
             setTimeout(() => {
                 notification.remove();
-            }, 3000);
+            }, 4000);
         }
     </script>
 </body>
 </html>'''
-    
+         
 # API endpoints
 @app.route('/api/status')
 def api_status():
@@ -2204,19 +2138,21 @@ def api_validate_session():
             'success': False,
             'message': str(e)
         }), 500
-
         
 @app.route('/api/place_bet', methods=['POST'])
 def api_place_bet():
-    """Размещение ставки с проверкой сессии"""
-    ensure_database()
-    
+    """Размещение ставки"""
     try:
         data = request.get_json()
-        
         session_token = data.get('session_token')
         bet_type = data.get('bet_type')
         bet_amount = data.get('bet_amount')
+        
+        if not all([session_token, bet_type, bet_amount]):
+            return jsonify({
+                'success': False,
+                'message': 'Missing required fields'
+            }), 400
         
         # Проверяем сессию
         user = validate_session(session_token)
@@ -2229,54 +2165,36 @@ def api_place_bet():
         user_id = user[0]
         current_balance = user[3]
         
-        # Валидация ставки
-        if not bet_type or not bet_amount:
-            return jsonify({
-                'success': False,
-                'message': 'Bet type and amount required'
-            }), 400
-        
-        if bet_amount <= 0:
-            return jsonify({
-                'success': False,
-                'message': 'Bet amount must be positive'
-            }), 400
-        
+        # Проверяем баланс
         if current_balance < bet_amount:
             return jsonify({
                 'success': False,
                 'message': 'Insufficient balance'
             }), 400
         
-        # Проверяем что ставки принимаются
+        # Проверяем фазу игры
         if game_state['phase'] != 'betting':
             return jsonify({
                 'success': False,
                 'message': 'Betting is closed'
             }), 400
         
-        # Добавляем ставку
-        if str(user_id) not in game_state['bets']:
-            game_state['bets'][str(user_id)] = []
-        
-        bet_info = {
-            'user_id': user_id,
-            'bet_type': bet_type,
-            'bet_amount': bet_amount,
-            'round_id': game_state['round'],
-            'timestamp': time.time()
-        }
-        
-        game_state['bets'][str(user_id)].append(bet_info)
-        
         # Списываем ставку с баланса
         new_balance = current_balance - bet_amount
         if update_user_balance(user_id, new_balance):
+            # Сохраняем ставку
+            if str(user_id) not in game_state['bets']:
+                game_state['bets'][str(user_id)] = []
+            
+            game_state['bets'][str(user_id)].append({
+                'bet_type': bet_type,
+                'bet_amount': bet_amount
+            })
+            
             return jsonify({
                 'success': True,
                 'message': 'Bet placed successfully',
-                'new_balance': new_balance,
-                'bet_info': bet_info
+                'new_balance': new_balance
             })
         else:
             return jsonify({
@@ -2285,7 +2203,7 @@ def api_place_bet():
             }), 500
             
     except Exception as e:
-        print(f"Error placing bet: {e}")
+        print(f"Place bet error: {e}")
         return jsonify({
             'success': False,
             'message': 'Bet placement failed'
@@ -2310,7 +2228,6 @@ def api_game_state():
             'success': False,
             'message': str(e)
         })
-
 
 @app.route('/api/players')
 def api_players():
@@ -2903,6 +2820,31 @@ def cleanup_inactive_players():
         except Exception as e:
             print(f"Cleanup error: {e}")
             time.sleep(60)
+
+# В самом конце файла, перед if __name__ == '__main__':
+
+def start_game_engine():
+    """Запуск игрового движка в отдельном потоке"""
+    import threading
+    game_thread = threading.Thread(target=online_game_engine, daemon=True)
+    game_thread.start()
+    print("🎮 Live Game Engine Started in background")
+
+if __name__ == '__main__':
+    # Инициализация
+    ensure_database()
+    start_game_engine()  # ⭐ ЗАПУСКАЕМ ИГРОВОЙ ДВИЖОК
+    
+    # Запуск приложения
+    try:
+        app.run(
+            host='0.0.0.0',
+            port=int(os.environ.get('PORT', 5000)),
+            debug=False,
+            threaded=True  # ⭐ ВАЖНО для многопоточности
+        )
+    except Exception as e:
+        print(f"❌ Server error: {e}")
             
 if __name__ == '__main__':
     if init_application():
