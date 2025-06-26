@@ -1200,100 +1200,82 @@ def api_check_registration():
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
-    """Регистрация нового пользователя с детальной отладкой"""
+    """Регистрация нового пользователя"""
     print("🔄 Starting registration process...")
-    
-    # Убеждаемся что БД инициализирована
     ensure_database()
     
     try:
-        # Отладка 1: Проверяем входящие данные
-        print(f"🔍 Request method: {request.method}")
-        print(f"🔍 Content-Type: {request.content_type}")
-        print(f"🔍 Raw data: {request.data}")
-        
         data = request.get_json()
         print(f"🔍 Parsed JSON: {data}")
         
         if not data:
-            print("❌ No JSON data received")
             return jsonify({
                 'success': False,
                 'message': 'No data provided'
             }), 400
         
-        # Отладка 2: Извлекаем параметры
+        # Извлекаем данные
         telegram_id = data.get('telegram_id')
         username = data.get('username', '')
         display_name = data.get('display_name', '')
         
-        print(f"🔍 Extracted data:")
-        print(f"  - telegram_id: {telegram_id} (type: {type(telegram_id)})")
+        # ВРЕМЕННОЕ ИСПРАВЛЕНИЕ: Генерируем ID если не передан
+        if not telegram_id:
+            # Извлекаем числа из username если есть
+            import re
+            if username and 'guest_' in username:
+                numbers = re.findall(r'\d+', username)
+                if numbers:
+                    telegram_id = int(numbers[0])
+                    print(f"🔧 Generated telegram_id from username: {telegram_id}")
+                else:
+                    telegram_id = int(time.time())  # Используем timestamp
+                    print(f"🔧 Generated telegram_id from timestamp: {telegram_id}")
+            else:
+                telegram_id = int(time.time())
+                print(f"🔧 Generated telegram_id: {telegram_id}")
+        
+        print(f"🔍 Final data:")
+        print(f"  - telegram_id: {telegram_id}")
         print(f"  - username: {username}")
         print(f"  - display_name: {display_name}")
         
-        # Проверка обязательных полей
-        if not telegram_id:
-            print("❌ Missing telegram_id")
-            return jsonify({
-                'success': False,
-                'message': 'Telegram ID required'
-            }), 400
-        
         if not display_name:
-            print("❌ Missing display_name")
             return jsonify({
                 'success': False,
                 'message': 'Display name required'
             }), 400
         
-        # Отладка 3: Проверяем существующего пользователя
-        print(f"🔍 Checking existing user with ID: {telegram_id}")
+        # Проверяем существующего пользователя
         existing_user = get_user(int(telegram_id))
-        print(f"🔍 Existing user result: {existing_user}")
         
         if existing_user:
-            print("🔄 Updating existing user...")
-            # Обновляем существующего пользователя
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                
-                cursor.execute('''
-                    UPDATE users 
-                    SET username = ?, display_name = ?, is_registered = 1 
-                    WHERE telegram_id = ?
-                ''', (username, display_name, int(telegram_id)))
-                
-                rows_affected = cursor.rowcount
-                conn.commit()
-                conn.close()
-                
-                print(f"✅ User updated, rows affected: {rows_affected}")
-                
-                return jsonify({
-                    'success': True,
-                    'message': 'User updated successfully',
-                    'user_id': existing_user[0],
-                    'display_name': display_name,
-                    'balance': existing_user[4]
-                })
-                
-            except Exception as update_error:
-                print(f"❌ Error updating user: {update_error}")
-                if 'conn' in locals():
-                    conn.close()
-                raise update_error
+            # Обновляем существующего
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE users 
+                SET username = ?, display_name = ?, is_registered = 1 
+                WHERE telegram_id = ?
+            ''', (username, display_name, int(telegram_id)))
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'message': 'User updated successfully',
+                'user_id': existing_user[0],
+                'display_name': display_name,
+                'balance': existing_user[4]
+            })
         
         else:
-            print("🆕 Creating new user...")
-            # Создаем нового пользователя
+            # Создаем нового
             user_id = create_user(int(telegram_id), username, display_name)
-            print(f"🔍 create_user returned: {user_id}")
             
             if user_id:
-                print(f"✅ New user created successfully with ID: {user_id}")
-                
                 return jsonify({
                     'success': True,
                     'message': 'User registered successfully',
@@ -1302,7 +1284,6 @@ def api_register():
                     'balance': 1000
                 })
             else:
-                print("❌ create_user returned None")
                 return jsonify({
                     'success': False,
                     'message': 'Failed to create user'
@@ -1311,14 +1292,13 @@ def api_register():
     except Exception as e:
         print(f"❌ Exception in api_register: {e}")
         import traceback
-        print("Full traceback:")
         print(traceback.format_exc())
         
         return jsonify({
             'success': False,
             'message': f'Registration error: {str(e)}'
         }), 500
-
+        
 @app.route('/api/place_bet', methods=['POST'])
 def api_place_bet():
     ensure_database()
