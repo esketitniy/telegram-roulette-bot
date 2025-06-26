@@ -666,56 +666,39 @@ def get_number_color(number):
 
 # 8. ИГРОВОЙ ДВИЖОК
 def online_game_engine():
-    """Непрерывный игровой движок с точным таймингом"""
+    """Игровой движок адаптированный под ваш формат"""
     print("🎮 Live Casino Engine Started")
     
-    # Принудительная инициализация
     global game_state
     
-    # Убеждаемся что все ключи существуют
-    required_keys = ['round', 'phase', 'time_left', 'bets', 'last_result', 'spinning_result']
-    for key in required_keys:
-        if key not in game_state:
-            if key == 'round':
-                game_state[key] = 0
-            elif key == 'phase':
-                game_state[key] = 'betting'
-            elif key == 'time_left':
-                game_state[key] = 30
-            elif key == 'bets':
-                game_state[key] = {}
-            else:
-                game_state[key] = None
-    
-    print(f"🎯 Engine initialized game_state: {game_state}")
+    # Инициализируем если нужно
+    if 'round_id' not in game_state:
+        game_state['round_id'] = int(time.time())
+    if 'bets' not in game_state:
+        game_state['bets'] = {}
+    if 'spin_history' not in game_state:
+        game_state['spin_history'] = []
     
     while True:
         try:
             # Новый раунд
-            game_state['round'] += 1
+            game_state['round_id'] = int(time.time())
             game_state['bets'] = {}
-            game_state['spinning_result'] = None
+            game_state['is_spinning'] = False
             
-            print(f"🎰 Round {game_state['round']} - Starting")
+            print(f"🎰 Round {game_state['round_id']} - Starting")
             
             # ФАЗА СТАВОК (30 секунд)
-            game_state['phase'] = 'betting'
-            betting_duration = 30
-            
-            print(f"🎰 Round {game_state['round']} - Betting Open")
-            
-            for remaining in range(betting_duration, 0, -1):
-                game_state['time_left'] = remaining
+            for countdown in range(30, 0, -1):
+                game_state['countdown'] = countdown
                 time.sleep(1)
             
             # ЗАКРЫТИЕ СТАВОК
-            print(f"🚫 Round {game_state['round']} - Betting Closed")
+            game_state['countdown'] = 0
+            game_state['is_spinning'] = True
+            print("🚫 Betting Closed - Spinning...")
             
-            # ФАЗА ВРАЩЕНИЯ (8 секунд)
-            game_state['phase'] = 'spinning'
-            spinning_duration = 8
-            
-            # Генерируем результат заранее
+            # ВРАЩЕНИЕ (5 секунд)
             result_number = random.randint(0, 36)
             if result_number == 0:
                 result_color = 'green'
@@ -724,41 +707,72 @@ def online_game_engine():
             else:
                 result_color = 'black'
             
-            # Устанавливаем результат для анимации
-            game_state['spinning_result'] = {
+            # Спин анимация
+            for i in range(5, 0, -1):
+                time.sleep(1)
+            
+            # РЕЗУЛЬТАТ
+            game_state['is_spinning'] = False
+            game_state['last_result'] = {
                 'number': result_number,
                 'color': result_color
             }
             
-            print(f"🌀 Round {game_state['round']} - Spinning... Target: {result_number} ({result_color})")
-            
-            for remaining in range(spinning_duration, 0, -1):
-                game_state['time_left'] = remaining
-                time.sleep(1)
-            
-            # ПОКАЗ РЕЗУЛЬТАТА (5 секунд)
-            game_state['phase'] = 'result'
-            game_state['last_result'] = {
-                'number': result_number,
-                'color': result_color,
-                'round': game_state['round']
-            }
-            
-            print(f"🎯 Round {game_state['round']} - Result: {result_number} ({result_color})")
+            print(f"🎯 Result: {result_number} ({result_color})")
             
             # Обрабатываем ставки
-            process_round_bets(result_number, result_color)
+            process_round_bets_adapted(result_number, result_color)
             
-            # Показываем результат
-            for remaining in range(5, 0, -1):
-                game_state['time_left'] = remaining
-                time.sleep(1)
+            # Добавляем в историю
+            game_state['spin_history'].insert(0, {
+                'number': result_number,
+                'color': result_color
+            })
+            if len(game_state['spin_history']) > 10:
+                game_state['spin_history'] = game_state['spin_history'][:10]
+            
+            # Показываем результат 3 секунды
+            time.sleep(3)
             
         except Exception as e:
             print(f"❌ Game engine error: {e}")
             import traceback
             traceback.print_exc()
             time.sleep(2)
+
+def process_round_bets_adapted(result_number, result_color):
+    """Обработка ставок под ваш формат"""
+    try:
+        for user_id, user_bets in game_state.get('bets', {}).items():
+            user = get_user_by_id(int(user_id))
+            if not user:
+                continue
+            
+            current_balance = user[4]
+            
+            for bet in user_bets:
+                bet_type = bet['bet_type']
+                bet_amount = bet['bet_amount']
+                win_amount = 0
+                
+                # Проверяем выигрыш
+                if bet_type == result_color:
+                    if result_color == 'green':
+                        win_amount = bet_amount * 14
+                    else:
+                        win_amount = bet_amount * 2
+                elif bet_type.isdigit() and int(bet_type) == result_number:
+                    win_amount = bet_amount * 36
+                
+                # Начисляем выигрыш
+                if win_amount > 0:
+                    new_balance = current_balance + win_amount
+                    update_user_balance(int(user_id), new_balance)
+                    current_balance = new_balance
+                    print(f"💰 User {user_id} won {win_amount}")
+                
+    except Exception as e:
+        print(f"❌ Error processing bets: {e}")
 
 def process_round_bets(result_number, result_color):
     """Обработка всех ставок раунда"""
