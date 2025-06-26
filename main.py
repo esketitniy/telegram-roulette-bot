@@ -2213,12 +2213,15 @@ def api_place_bet():
         user_id = user[0]
         current_balance = user[3]
         
-        # Проверяем фазу игры (с безопасной проверкой)
-        current_phase = game_state.get('phase', 'betting')
-        if current_phase != 'betting':
+        # АДАПТИРУЕМ ПОД ВАШ ФОРМАТ game_state
+        # Проверяем можно ли делать ставки
+        is_spinning = game_state.get('is_spinning', False)
+        countdown = game_state.get('countdown', 0)
+        
+        if is_spinning or countdown <= 0:
             return jsonify({
                 'success': False,
-                'message': f'Betting is closed. Current phase: {current_phase}'
+                'message': f'Betting is closed. Spinning: {is_spinning}, Countdown: {countdown}'
             }), 400
         
         # Проверяем баланс
@@ -2244,7 +2247,7 @@ def api_place_bet():
                 'message': 'Failed to update balance'
             }), 500
         
-        # Добавляем ставку в игровое состояние (с безопасной инициализацией)
+        # Добавляем ставку в ВАШЕ игровое состояние
         if 'bets' not in game_state:
             game_state['bets'] = {}
             
@@ -2277,16 +2280,29 @@ def api_place_bet():
         
 @app.route('/api/game_state')
 def api_game_state():
-    """Получение текущего состояния игры"""
+    """Получение текущего состояния игры - АДАПТИРОВАННАЯ ВЕРСИЯ"""
     try:
+        # Адаптируем ваш формат к ожидаемому фронтендом
+        countdown = game_state.get('countdown', 30)
+        is_spinning = game_state.get('is_spinning', False)
+        last_result = game_state.get('last_result')
+        
+        # Определяем фазу на основе вашего формата
+        if is_spinning:
+            phase = 'spinning'
+        elif countdown > 0:
+            phase = 'betting'
+        else:
+            phase = 'result'
+        
         return jsonify({
             'success': True,
             'game_state': {
-                'round': game_state.get('round', 0),
-                'phase': game_state.get('phase', 'betting'),
-                'time_left': game_state.get('time_left', 30),
-                'last_result': game_state.get('last_result'),
-                'spinning_result': game_state.get('spinning_result')
+                'round': game_state.get('round_id', 1),
+                'phase': phase,
+                'time_left': countdown,
+                'last_result': last_result,
+                'spinning_result': last_result if is_spinning else None
             }
         })
     except Exception as e:
