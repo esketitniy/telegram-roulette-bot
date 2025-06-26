@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="game-container">
+    <!-- Игровая информация -->
+    <div class="game-info">
+        <div class="round-info">
+            <h2>Раунд #<span id="round-number">1</span></h2>
+            <div class="timer">
+                <div class="timer-circle">
+                    <span id="timer-text">30</span>
+                </div>
+                <div class="timer-status" id="timer-status">Делайте ставки</div>
+            </div>
+        </div>
+        
+        <div class="last-numbers">
+            <h3>Последние числа</h3>
+            <div class="numbers-history" id="numbers-history">
+                <!-- Здесь будут отображаться последние выпавшие числа -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Рулетка -->
+    <div class="roulette-container">
+        <div class="roulette-wheel" id="roulette-wheel">
+            <div class="wheel-center"></div>
+            <div class="wheel-numbers">
+                <!-- Числа будут добавлены через JavaScript -->
+            </div>
+            <div class="wheel-pointer"></div>
+        </div>
+        
+        <div class="winning-number" id="winning-display" style="display: none;">
+            <div class="winning-circle">
+                <span id="winning-number">0</span>
+            </div>
+            <div class="winning-color" id="winning-color">Зелёный</div>
+        </div>
+    </div>
+
+    <!-- Панель ставок -->
+    <div class="betting-panel">
+        <h3>Сделать ставку</h3>
+        <div class="bet-options">
+            <div class="bet-option red" data-bet="red">
+                <div class="bet-color"></div>
+                <span>Красное</span>
+                <small>x2</small>
+            </div>
+            <div class="bet-option black" data-bet="black">
+                <div class="bet-color"></div>
+                <span>Чёрное</span>
+                <small>x2</small>
+            </div>
+            <div class="bet-option green" data-bet="green">
+                <div class="bet-color"></div>
+                <span>Зелёное</span>
+                <small>x36</small>
+            </div>
+        </div>
+        
+        <div class="bet-amount">
+            <label>Сумма ставки:</label>
+            <div class="amount-input">
+                <input type="number" id="bet-amount" min="1" max="{{ current_user.balance }}" value="10">
+                <div class="quick-amounts">
+                    <button class="quick-bet" data-amount="10">10</button>
+                    <button class="quick-bet" data-amount="50">50</button>
+                    <button class="quick-bet" data-amount="100">100</button>
+                    <button class="quick-bet" data-amount="500">500</button>
+                </div>
+            </div>
+        </div>
+        
+        <button id="place-bet-btn" class="place-bet-btn" disabled>
+            Сделать ставку
+        </button>
+    </div>
+
+    <!-- Текущие ставки -->
+    <div class="current-bets">
+        <h3>Ставки в этом раунде</h3>
+        <div class="bets-list" id="current-bets-list">
+            <!-- Ставки будут добавляться через JavaScript -->
+        </div>
+    </div>
+</div>
+{% endblock %}
