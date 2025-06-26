@@ -665,13 +665,25 @@ def online_game_engine():
     """Непрерывный игровой движок с точным таймингом"""
     print("🎮 Live Casino Engine Started")
     
-    # Инициализируем первый раунд
-    game_state['round'] = 0
-    game_state['phase'] = 'betting'
-    game_state['time_left'] = 30
-    game_state['bets'] = {}
-    game_state['last_result'] = None
-    game_state['spinning_result'] = None
+    # Принудительная инициализация
+    global game_state
+    
+    # Убеждаемся что все ключи существуют
+    required_keys = ['round', 'phase', 'time_left', 'bets', 'last_result', 'spinning_result']
+    for key in required_keys:
+        if key not in game_state:
+            if key == 'round':
+                game_state[key] = 0
+            elif key == 'phase':
+                game_state[key] = 'betting'
+            elif key == 'time_left':
+                game_state[key] = 30
+            elif key == 'bets':
+                game_state[key] = {}
+            else:
+                game_state[key] = None
+    
+    print(f"🎯 Engine initialized game_state: {game_state}")
     
     while True:
         try:
