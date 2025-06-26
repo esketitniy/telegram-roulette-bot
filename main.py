@@ -20,6 +20,18 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 
+# Определяем путь к базе данных
+DB_PATH = '/data/casino_online.db' if os.path.exists('/data') else 'casino_online.db'
+
+print(f"🗂️  Using database path: {DB_PATH}")
+print(f"💾 Disk mounted: {os.path.exists('/data')}")
+
+# Создаем директорию для БД если нужно
+db_dir = os.path.dirname(DB_PATH)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir, exist_ok=True)
+    print(f"📁 Created directory: {db_dir}")
+    
 def hash_password(password):
     """Хеширование пароля"""
     return hashlib.sha256(password.encode()).hexdigest()
@@ -144,17 +156,6 @@ def validate_session(session_token):
             conn.close()
         return None
 
-# Определяем путь к базе данных
-DB_PATH = '/data/casino_online.db' if os.path.exists('/data') else 'casino_online.db'
-
-print(f"🗂️  Using database path: {DB_PATH}")
-print(f"💾 Disk mounted: {os.path.exists('/data')}")
-
-# Создаем директорию для БД если нужно
-db_dir = os.path.dirname(DB_PATH)
-if db_dir and not os.path.exists(db_dir):
-    os.makedirs(db_dir, exist_ok=True)
-    print(f"📁 Created directory: {db_dir}")
 
 # Версия приложения
 APP_VERSION = "1.0.0"
