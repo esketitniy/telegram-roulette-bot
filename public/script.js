@@ -1,14 +1,3 @@
-// В начале файла добавьте глобальную переменную
-window.switchTab = function(tab) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
-    
-    document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
-    document.getElementById(`${tab}Form`).classList.add('active');
-    
-    document.getElementById('authError').textContent = '';
-};
-
 class RouletteGame {
     constructor() {
         this.socket = io();
@@ -16,6 +5,8 @@ class RouletteGame {
         this.user = null;
         this.selectedColor = null;
         this.gameState = {};
+        this.retryCount = 0;
+        this.maxRetries = 3;
         
         this.init();
     }
@@ -45,27 +36,43 @@ class RouletteGame {
                 const data = await response.json();
                 this.user = data.user;
                 this.showGameScreen();
+                this.retryCount = 0;
+            } else if (response.status === 503) {
+                this.showAuthError('Сервер загружается, попробуйте через несколько секунд...');
+                setTimeout(() => this.verifyToken(), 3000);
             } else {
                 localStorage.removeItem('token');
                 this.showAuthScreen();
             }
         } catch (error) {
             console.error('Ошибка проверки токена:', error);
-            this.showAuthScreen();
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                setTimeout(() => this.verifyToken(), 2000);
+            } else {
+                this.showAuthScreen();
+            }
         }
     }
 
     setupEventListeners() {
         // Auth form handlers
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleLogin();
-        });
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
 
-        document.getElementById('registerForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleRegister();
-        });
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
+
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegister();
+            });
+        }
 
         // Game handlers
         document.querySelectorAll('.bet-btn').forEach(btn => {
@@ -74,26 +81,41 @@ class RouletteGame {
             });
         });
 
-        document.getElementById('placeBetBtn').addEventListener('click', () => {
-            this.placeBet();
-        });
+        const placeBetBtn = document.getElementById('placeBetBtn');
+        if (placeBetBtn) {
+            placeBetBtn.addEventListener('click', () => {
+                this.placeBet();
+            });
+        }
 
-        document.getElementById('betAmount').addEventListener('input', () => {
-            this.updateBetButton();
-        });
+        const betAmountInput = document.getElementById('betAmount');
+        if (betAmountInput) {
+            betAmountInput.addEventListener('input', () => {
+                this.updateBetButton();
+            });
+        }
 
-        document.getElementById('profileBtn').addEventListener('click', () => {
-            this.showProfile();
-        });
+        const profileBtn = document.getElementById('profileBtn');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', () => {
+                this.showProfile();
+            });
+        }
 
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            this.logout();
-        });
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                this.logout();
+            });
+        }
 
         // Modal handlers
-        document.querySelector('.close').addEventListener('click', () => {
-            document.getElementById('profileModal').style.display = 'none';
-        });
+        const closeBtn = document.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                document.getElementById('profileModal').style.display = 'none';
+            });
+        }
 
         window.addEventListener('click', (e) => {
             const modal = document.getElementById('profileModal');
@@ -113,12 +135,15 @@ class RouletteGame {
         });
 
         this.socket.on('timeUpdate', (timeLeft) => {
-            document.getElementById('timeLeft').textContent = timeLeft;
-            
-            if (timeLeft <= 5 && this.gameState.phase === 'betting') {
-                document.getElementById('timeLeft').style.color = '#ff4444';
-            } else {
-                document.getElementById('timeLeft').style.color = '#ffd700';
+            const timeLeftElement = document.getElementById('timeLeft');
+            if (timeLeftElement) {
+                timeLeftElement.textContent = timeLeft;
+                
+                if (timeLeft <= 5 && this.gameState.phase === 'betting') {
+                    timeLeftElement.style.color = '#ff4444';
+                } else {
+                    timeLeftElement.style.color = '#ffd700';
+                }
             }
         });
 
@@ -154,15 +179,35 @@ class RouletteGame {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
         
-        document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
-        document.getElementById(`${tab}Form`).classList.add('active');
+        const tabButton = document.querySelector(`[onclick="switchTab('${tab}')"]`);
+        const tabForm = document.getElementById(`${tab}Form`);
         
-        document.getElementById('authError').textContent = '';
+        if (tabButton) tabButton.classList.add('active');
+        if (tabForm) tabForm.classList.add('active');
+        
+        this.clearAuthError();
     }
 
     async handleLogin() {
-        const username = document.getElementById('loginUsername').value;
-        const password = document.getElementById('loginPassword').value;
+        const usernameInput = document.getElementById('loginUsername');
+        const passwordInput = document.getElementById('loginPassword');
+        
+        if (!usernameInput || !passwordInput) {
+            this.showAuthError('Ошибка: поля ввода не найдены');
+            return;
+        }
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        console.log('Попытка входа для пользователя:', username);
+
+        if (!username || !password) {
+            this.showAuthError('Введите логин и пароль');
+            return;
+        }
+
+        this.showAuthLoading('Вход в систему...');
 
         try {
             const response = await fetch('/api/login', {
@@ -173,24 +218,59 @@ class RouletteGame {
                 body: JSON.stringify({ username, password })
             });
 
+            console.log('Ответ сервера:', response.status);
             const data = await response.json();
+            console.log('Данные ответа:', data);
 
             if (response.ok) {
                 this.token = data.token;
                 this.user = data.user;
                 localStorage.setItem('token', this.token);
-                this.showGameScreen();
+                this.showAuthSuccess('Успешный вход!');
+                setTimeout(() => {
+                    this.showGameScreen();
+                }, 1000);
+            } else if (response.status === 503) {
+                this.showAuthError('Сервер загружается, попробуйте через несколько секунд...');
             } else {
-                this.showAuthError(data.error);
+                this.showAuthError(data.error || 'Ошибка входа');
             }
         } catch (error) {
+            console.error('Ошибка при входе:', error);
             this.showAuthError('Ошибка соединения с сервером');
         }
     }
 
     async handleRegister() {
-        const username = document.getElementById('registerUsername').value;
-        const password = document.getElementById('registerPassword').value;
+        const usernameInput = document.getElementById('registerUsername');
+        const passwordInput = document.getElementById('registerPassword');
+        
+        if (!usernameInput || !passwordInput) {
+            this.showAuthError('Ошибка: поля ввода не найдены');
+            return;
+        }
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        console.log('Попытка регистрации для пользователя:', username);
+
+        if (!username || !password) {
+            this.showAuthError('Введите логин и пароль');
+            return;
+        }
+
+        if (username.length < 3) {
+            this.showAuthError('Логин должен содержать минимум 3 символа');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showAuthError('Пароль должен содержать минимум 6 символов');
+            return;
+        }
+
+        this.showAuthLoading('Регистрация...');
 
         try {
             const response = await fetch('/api/register', {
@@ -201,53 +281,113 @@ class RouletteGame {
                 body: JSON.stringify({ username, password })
             });
 
+            console.log('Ответ сервера:', response.status);
             const data = await response.json();
+            console.log('Данные ответа:', data);
 
             if (response.ok) {
                 this.token = data.token;
                 this.user = data.user;
                 localStorage.setItem('token', this.token);
-                this.showGameScreen();
+                this.showAuthSuccess('Регистрация успешна!');
+                setTimeout(() => {
+                    this.showGameScreen();
+                }, 1000);
+            } else if (response.status === 503) {
+                this.showAuthError('Сервер загружается, попробуйте через несколько секунд...');
             } else {
-                this.showAuthError(data.error);
+                this.showAuthError(data.error || 'Ошибка регистрации');
             }
         } catch (error) {
+            console.error('Ошибка при регистрации:', error);
             this.showAuthError('Ошибка соединения с сервером');
         }
     }
 
     showAuthError(message) {
-        document.getElementById('authError').textContent = message;
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = 'error-message error';
+            errorElement.style.display = 'block';
+        }
+        console.error('Auth error:', message);
+    }
+
+    showAuthSuccess(message) {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = 'error-message success';
+            errorElement.style.display = 'block';
+        }
+        console.log('Auth success:', message);
+    }
+
+    showAuthLoading(message) {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = 'error-message loading';
+            errorElement.style.display = 'block';
+        }
+        console.log('Auth loading:', message);
+    }
+
+    clearAuthError() {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
     }
 
     // Screen management
     showAuthScreen() {
-        document.getElementById('authScreen').classList.remove('hidden');
-        document.getElementById('gameScreen').classList.add('hidden');
+        const authScreen = document.getElementById('authScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        
+        if (authScreen) authScreen.classList.remove('hidden');
+        if (gameScreen) gameScreen.classList.add('hidden');
     }
 
     showGameScreen() {
-        document.getElementById('authScreen').classList.add('hidden');
-        document.getElementById('gameScreen').classList.remove('hidden');
+        const authScreen = document.getElementById('authScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        
+        if (authScreen) authScreen.classList.add('hidden');
+        if (gameScreen) gameScreen.classList.remove('hidden');
         
         this.updateUserInfo();
         this.loadGameHistory();
     }
 
     updateUserInfo() {
-        document.getElementById('username').textContent = this.user.username;
+        const usernameElement = document.getElementById('username');
+        if (usernameElement && this.user) {
+            usernameElement.textContent = this.user.username;
+        }
         this.updateBalance();
     }
 
     updateBalance() {
-        document.getElementById('balance').textContent = this.user.balance;
-        document.getElementById('profileBalance').textContent = this.user.balance;
+        const balanceElement = document.getElementById('balance');
+        const profileBalanceElement = document.getElementById('profileBalance');
+        
+        if (balanceElement && this.user) {
+            balanceElement.textContent = this.user.balance;
+        }
+        if (profileBalanceElement && this.user) {
+            profileBalanceElement.textContent = this.user.balance;
+        }
     }
 
     // Game methods
     updateGameUI() {
         const timerText = document.getElementById('timerText');
         const placeBetBtn = document.getElementById('placeBetBtn');
+
+        if (!timerText || !placeBetBtn) return;
 
         switch (this.gameState.phase) {
             case 'betting':
@@ -267,7 +407,9 @@ class RouletteGame {
         }
 
         this.updateBetButton();
-      selectColor(color) {
+    }
+
+    selectColor(color) {
         if (this.gameState.phase !== 'betting') return;
         
         this.selectedColor = color;
@@ -281,13 +423,20 @@ class RouletteGame {
         });
 
         if (this.selectedColor) {
-            document.querySelector(`[data-color="${this.selectedColor}"]`).classList.add('selected');
+            const selectedBtn = document.querySelector(`[data-color="${this.selectedColor}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('selected');
+            }
         }
     }
 
     updateBetButton() {
-        const betAmount = parseInt(document.getElementById('betAmount').value);
+        const betAmountInput = document.getElementById('betAmount');
         const placeBetBtn = document.getElementById('placeBetBtn');
+        
+        if (!betAmountInput || !placeBetBtn || !this.user) return;
+
+        const betAmount = parseInt(betAmountInput.value);
 
         const canBet = this.selectedColor && 
                       betAmount > 0 && 
@@ -298,7 +447,10 @@ class RouletteGame {
     }
 
     placeBet() {
-        const betAmount = parseInt(document.getElementById('betAmount').value);
+        const betAmountInput = document.getElementById('betAmount');
+        if (!betAmountInput) return;
+
+        const betAmount = parseInt(betAmountInput.value);
         
         if (!this.selectedColor || betAmount <= 0 || betAmount > this.user.balance) {
             this.showError('Неверная ставка');
@@ -312,7 +464,7 @@ class RouletteGame {
         });
 
         // Очистка формы
-        document.getElementById('betAmount').value = '';
+        betAmountInput.value = '';
         this.selectedColor = null;
         this.updateColorSelection();
         this.updateBetButton();
@@ -320,26 +472,517 @@ class RouletteGame {
 
     startRouletteAnimation() {
         const wheel = document.getElementById('rouletteWheel');
+        if (!wheel) return;
+
         wheel.classList.add('spinning');
-        
-        // Генерируем случайное количество оборотов
-        const spins = 5 + Math.random() * 5; // 5-10 оборотов
-        const finalRotation = spins * 360;
         
         setTimeout(() => {
             wheel.classList.remove('spinning');
+            const spins = 5 + Math.random() * 5;
+            const finalRotation = spins * 360;
             wheel.style.transform = `rotate(${finalRotation}deg)`;
         }, 100);
     }
 
     showResult(result) {
         const wheel = document.getElementById('rouletteWheel');
+        if (!wheel) return;
         
-        // Определяем финальный угол для результата
         const colorAngles = {
-            'green': 348, // Зеленый сектор
-            'red': [12, 36, 60, 84, 108, 132, 156, 180, 204, 228, 252, 276, 300, 324], // Красные секторы
-            'black': [24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336] // Черные секторы
+            'greenclass RouletteGame {
+    constructor() {
+        this.socket = io();
+        this.token = localStorage.getItem('token');
+        this.user = null;
+        this.selectedColor = null;
+        this.gameState = {};
+        this.retryCount = 0;
+        this.maxRetries = 3;
+        
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.checkAuth();
+    }
+
+    checkAuth() {
+        if (this.token) {
+            this.verifyToken();
+        } else {
+            this.showAuthScreen();
+        }
+    }
+
+    async verifyToken() {
+        try {
+            const response = await fetch('/api/profile', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.user = data.user;
+                this.showGameScreen();
+                this.retryCount = 0;
+            } else if (response.status === 503) {
+                this.showAuthError('Сервер загружается, попробуйте через несколько секунд...');
+                setTimeout(() => this.verifyToken(), 3000);
+            } else {
+                localStorage.removeItem('token');
+                this.showAuthScreen();
+            }
+        } catch (error) {
+            console.error('Ошибка проверки токена:', error);
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                setTimeout(() => this.verifyToken(), 2000);
+            } else {
+                this.showAuthScreen();
+            }
+        }
+    }
+
+    setupEventListeners() {
+        // Auth form handlers
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
+
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegister();
+            });
+        }
+
+        // Game handlers
+        document.querySelectorAll('.bet-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectColor(btn.dataset.color);
+            });
+        });
+
+        const placeBetBtn = document.getElementById('placeBetBtn');
+        if (placeBetBtn) {
+            placeBetBtn.addEventListener('click', () => {
+                this.placeBet();
+            });
+        }
+
+        const betAmountInput = document.getElementById('betAmount');
+        if (betAmountInput) {
+            betAmountInput.addEventListener('input', () => {
+                this.updateBetButton();
+            });
+        }
+
+        const profileBtn = document.getElementById('profileBtn');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', () => {
+                this.showProfile();
+            });
+        }
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                this.logout();
+            });
+        }
+
+        // Modal handlers
+        const closeBtn = document.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                document.getElementById('profileModal').style.display = 'none';
+            });
+        }
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('profileModal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Socket event listeners
+        this.setupSocketListeners();
+    }
+
+    setupSocketListeners() {
+        this.socket.on('gameState', (state) => {
+            this.gameState = state;
+            this.updateGameUI();
+        });
+
+        this.socket.on('timeUpdate', (timeLeft) => {
+            const timeLeftElement = document.getElementById('timeLeft');
+            if (timeLeftElement) {
+                timeLeftElement.textContent = timeLeft;
+                
+                if (timeLeft <= 5 && this.gameState.phase === 'betting') {
+                    timeLeftElement.style.color = '#ff4444';
+                } else {
+                    timeLeftElement.style.color = '#ffd700';
+                }
+            }
+        });
+
+        this.socket.on('spinStart', () => {
+            this.startRouletteAnimation();
+        });
+
+        this.socket.on('spinResult', (result) => {
+            this.showResult(result);
+            this.loadGameHistory();
+        });
+
+        this.socket.on('newBet', (bet) => {
+            this.addBetToList(bet);
+        });
+
+        this.socket.on('balanceUpdate', (newBalance) => {
+            this.user.balance = newBalance;
+            this.updateBalance();
+        });
+
+        this.socket.on('betsResult', (data) => {
+            this.processBetsResult(data);
+        });
+
+        this.socket.on('error', (message) => {
+            this.showError(message);
+        });
+    }
+
+    // Auth methods
+    switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+        
+        const tabButton = document.querySelector(`[onclick="switchTab('${tab}')"]`);
+        const tabForm = document.getElementById(`${tab}Form`);
+        
+        if (tabButton) tabButton.classList.add('active');
+        if (tabForm) tabForm.classList.add('active');
+        
+        this.clearAuthError();
+    }
+
+    async handleLogin() {
+        const usernameInput = document.getElementById('loginUsername');
+        const passwordInput = document.getElementById('loginPassword');
+        
+        if (!usernameInput || !passwordInput) {
+            this.showAuthError('Ошибка: поля ввода не найдены');
+            return;
+        }
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        console.log('Попытка входа для пользователя:', username);
+
+        if (!username || !password) {
+            this.showAuthError('Введите логин и пароль');
+            return;
+        }
+
+        this.showAuthLoading('Вход в систему...');
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            console.log('Ответ сервера:', response.status);
+            const data = await response.json();
+            console.log('Данные ответа:', data);
+
+            if (response.ok) {
+                this.token = data.token;
+                this.user = data.user;
+                localStorage.setItem('token', this.token);
+                this.showAuthSuccess('Успешный вход!');
+                setTimeout(() => {
+                    this.showGameScreen();
+                }, 1000);
+            } else if (response.status === 503) {
+                this.showAuthError('Сервер загружается, попробуйте через несколько секунд...');
+            } else {
+                this.showAuthError(data.error || 'Ошибка входа');
+            }
+        } catch (error) {
+            console.error('Ошибка при входе:', error);
+            this.showAuthError('Ошибка соединения с сервером');
+        }
+    }
+
+    async handleRegister() {
+        const usernameInput = document.getElementById('registerUsername');
+        const passwordInput = document.getElementById('registerPassword');
+        
+        if (!usernameInput || !passwordInput) {
+            this.showAuthError('Ошибка: поля ввода не найдены');
+            return;
+        }
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        console.log('Попытка регистрации для пользователя:', username);
+
+        if (!username || !password) {
+            this.showAuthError('Введите логин и пароль');
+            return;
+        }
+
+        if (username.length < 3) {
+            this.showAuthError('Логин должен содержать минимум 3 символа');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showAuthError('Пароль должен содержать минимум 6 символов');
+            return;
+        }
+
+        this.showAuthLoading('Регистрация...');
+
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            console.log('Ответ сервера:', response.status);
+            const data = await response.json();
+            console.log('Данные ответа:', data);
+
+            if (response.ok) {
+                this.token = data.token;
+                this.user = data.user;
+                localStorage.setItem('token', this.token);
+                this.showAuthSuccess('Регистрация успешна!');
+                setTimeout(() => {
+                    this.showGameScreen();
+                }, 1000);
+            } else if (response.status === 503) {
+                this.showAuthError('Сервер загружается, попробуйте через несколько секунд...');
+            } else {
+                this.showAuthError(data.error || 'Ошибка регистрации');
+            }
+        } catch (error) {
+            console.error('Ошибка при регистрации:', error);
+            this.showAuthError('Ошибка соединения с сервером');
+        }
+    }
+
+    showAuthError(message) {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = 'error-message error';
+            errorElement.style.display = 'block';
+        }
+        console.error('Auth error:', message);
+    }
+
+    showAuthSuccess(message) {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = 'error-message success';
+            errorElement.style.display = 'block';
+        }
+        console.log('Auth success:', message);
+    }
+
+    showAuthLoading(message) {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = 'error-message loading';
+            errorElement.style.display = 'block';
+        }
+        console.log('Auth loading:', message);
+    }
+
+    clearAuthError() {
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
+    }
+
+    // Screen management
+    showAuthScreen() {
+        const authScreen = document.getElementById('authScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        
+        if (authScreen) authScreen.classList.remove('hidden');
+        if (gameScreen) gameScreen.classList.add('hidden');
+    }
+
+    showGameScreen() {
+        const authScreen = document.getElementById('authScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        
+        if (authScreen) authScreen.classList.add('hidden');
+        if (gameScreen) gameScreen.classList.remove('hidden');
+        
+        this.updateUserInfo();
+        this.loadGameHistory();
+    }
+
+    updateUserInfo() {
+        const usernameElement = document.getElementById('username');
+        if (usernameElement && this.user) {
+            usernameElement.textContent = this.user.username;
+        }
+        this.updateBalance();
+    }
+
+    updateBalance() {
+        const balanceElement = document.getElementById('balance');
+        const profileBalanceElement = document.getElementById('profileBalance');
+        
+        if (balanceElement && this.user) {
+            balanceElement.textContent = this.user.balance;
+        }
+        if (profileBalanceElement && this.user) {
+            profileBalanceElement.textContent = this.user.balance;
+        }
+    }
+
+    // Game methods
+    updateGameUI() {
+        const timerText = document.getElementById('timerText');
+        const placeBetBtn = document.getElementById('placeBetBtn');
+
+        if (!timerText || !placeBetBtn) return;
+
+        switch (this.gameState.phase) {
+            case 'betting':
+                timerText.textContent = 'Ставки: ';
+                placeBetBtn.disabled = false;
+                break;
+            case 'spinning':
+                timerText.textContent = 'Вращение: ';
+                placeBetBtn.disabled = true;
+                this.selectedColor = null;
+                this.updateColorSelection();
+                break;
+            case 'result':
+                timerText.textContent = 'Результат';
+                placeBetBtn.disabled = true;
+                break;
+        }
+
+        this.updateBetButton();
+    }
+
+    selectColor(color) {
+        if (this.gameState.phase !== 'betting') return;
+        
+        this.selectedColor = color;
+        this.updateColorSelection();
+        this.updateBetButton();
+    }
+
+    updateColorSelection() {
+        document.querySelectorAll('.bet-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+
+        if (this.selectedColor) {
+            const selectedBtn = document.querySelector(`[data-color="${this.selectedColor}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('selected');
+            }
+        }
+    }
+
+    updateBetButton() {
+        const betAmountInput = document.getElementById('betAmount');
+        const placeBetBtn = document.getElementById('placeBetBtn');
+        
+        if (!betAmountInput || !placeBetBtn || !this.user) return;
+
+        const betAmount = parseInt(betAmountInput.value);
+
+        const canBet = this.selectedColor && 
+                      betAmount > 0 && 
+                      betAmount <= this.user.balance && 
+                      this.gameState.phase === 'betting';
+
+        placeBetBtn.disabled = !canBet;
+    }
+
+    placeBet() {
+        const betAmountInput = document.getElementById('betAmount');
+        if (!betAmountInput) return;
+
+        const betAmount = parseInt(betAmountInput.value);
+        
+        if (!this.selectedColor || betAmount <= 0 || betAmount > this.user.balance) {
+            this.showError('Неверная ставка');
+            return;
+        }
+
+        this.socket.emit('placeBet', {
+            token: this.token,
+            color: this.selectedColor,
+            amount: betAmount
+        });
+
+        // Очистка формы
+        betAmountInput.value = '';
+        this.selectedColor = null;
+        this.updateColorSelection();
+        this.updateBetButton();
+    }
+
+    startRouletteAnimation() {
+        const wheel = document.getElementById('rouletteWheel');
+        if (!wheel) return;
+
+        wheel.classList.add('spinning');
+        
+        setTimeout(() => {
+            wheel.classList.remove('spinning');
+            const spins = 5 + Math.random() * 5;
+            const finalRotation = spins * 360;
+            wheel.style.transform = `rotate(${finalRotation}deg)`;
+        }, 100);
+    }
+
+    showResult(result) {
+        const wheel = document.getElementById('rouletteWheel');
+        if (!wheel) return;
+        
+        const colorAngles = {
+            'green': 348,
+            'red': [12, 36, 60, 84, 108, 132, 156, 180, 204, 228, 252, 276, 300, 324],
+            'black': [24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336]
         };
 
         let targetAngle;
@@ -350,21 +993,18 @@ class RouletteGame {
             targetAngle = angles[Math.floor(Math.random() * angles.length)];
         }
 
-        // Добавляем дополнительные обороты для эффектности
         const extraSpins = 5 * 360;
         const finalAngle = extraSpins + targetAngle;
 
         wheel.style.transition = 'transform 4s cubic-bezier(0.23, 1, 0.32, 1)';
         wheel.style.transform = `rotate(${finalAngle}deg)`;
 
-        // Показываем результат
         setTimeout(() => {
             this.displayResult(result);
         }, 4000);
     }
 
     displayResult(result) {
-        // Создаем элемент для отображения результата
         const resultElement = document.createElement('div');
         resultElement.className = `result-announcement ${result}`;
         resultElement.innerHTML = `
@@ -393,10 +1033,8 @@ class RouletteGame {
     processBetsResult(data) {
         const { result, bets } = data;
         
-        // Обновляем баланс пользователя
         this.loadUserProfile();
         
-        // Показываем результаты ставок
         bets.forEach(bet => {
             if (bet.userId === this.user.id) {
                 const won = bet.color === result;
@@ -416,6 +1054,8 @@ class RouletteGame {
 
     addBetToList(bet) {
         const betsList = document.getElementById('currentBets');
+        if (!betsList) return;
+
         const betElement = document.createElement('div');
         betElement.className = 'bet-item fade-in';
         betElement.innerHTML = `
@@ -428,7 +1068,6 @@ class RouletteGame {
         
         betsList.insertBefore(betElement, betsList.firstChild);
         
-        // Ограничиваем количество отображаемых ставок
         while (betsList.children.length > 10) {
             betsList.removeChild(betsList.lastChild);
         }
@@ -440,6 +1079,8 @@ class RouletteGame {
             const games = await response.json();
             
             const historyList = document.getElementById('gameHistory');
+            if (!historyList) return;
+
             historyList.innerHTML = '';
             
             games.forEach(game => {
@@ -480,6 +1121,8 @@ class RouletteGame {
 
     displayUserBets(bets) {
         const betsList = document.getElementById('userBets');
+        if (!betsList) return;
+
         betsList.innerHTML = '';
         
         if (bets.length === 0) {
@@ -513,7 +1156,10 @@ class RouletteGame {
 
     showProfile() {
         this.loadUserProfile();
-        document.getElementById('profileModal').style.display = 'block';
+        const modal = document.getElementById('profileModal');
+        if (modal) {
+            modal.style.display = 'block';
+        }
     }
 
     logout() {
@@ -534,7 +1180,6 @@ class RouletteGame {
         notification.className = `notification ${type}`;
         notification.textContent = message;
         
-        // Добавляем стили для уведомлений
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -570,71 +1215,31 @@ class RouletteGame {
     }
 }
 
-// Глобальные функции для HTML
-function switchTab(tab) {
-    game.switchTab(tab);
-}
-
-// Добавляем CSS для анимаций уведомлений
-const notificationStyles = document.createElement('style');
-notificationStyles.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-    
-    .result-announcement {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1002;
-        background: rgba(0, 0, 0, 0.9);
-        padding: 2rem;
-        border-radius: 20px;
-        text-align: center;
-        animation: fadeIn 0.5s ease-out;
-    }
-    
-    .result-announcement .result-color {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        margin: 0 auto 1rem;
-    }
-    
-    .result-announcement h2 {
-        color: white;
-        font-size: 2rem;
-        margin: 0;
-    }
-    
-    @media (max-width: 480px) {
-        .result-announcement {
-            padding: 1.5rem;
-            margin: 1rem;
-        }
+// Глобальная функция для переключения вкладок
+window.switchTab = function(tab) {
+    if (window.game) {
+        window.game.switchTab(tab);
+    } else {
+        // Fallback если game еще не инициализирован
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
         
-        .result-announcement h2 {
-            font-size: 1.5rem;
-        }
+        const tabButton = document.querySelector(`[onclick="switchTab('${tab}')"]`);
+        const tabForm = document.getElementById(`${tab}Form`);
         
-        .result-announcement .result-color {
-            width: 40px;
-            height: 40px;
+        if (tabButton) tabButton.classList.add('active');
+        if (tabForm) tabForm.classList.add('active');
+        
+        const errorElement = document.getElementById('authError');
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
         }
     }
-`;
-document.head.appendChild(notificationStyles);
+};
 
 // Инициализация игры
-let game;
 document.addEventListener('DOMContentLoaded', () => {
-    game = new RouletteGame();
+    console.log('DOM загружен, инициализация игры...');
+    window.game = new RouletteGame();
 });
-                                                               }
