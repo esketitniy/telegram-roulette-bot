@@ -2245,14 +2245,15 @@ def api_game_state():
         return jsonify({
             'success': True,
             'game_state': {
-                'round': game_state['round'],
-                'phase': game_state['phase'],
-                'time_left': game_state['time_left'],
+                'round': game_state.get('round', 0),
+                'phase': game_state.get('phase', 'betting'),
+                'time_left': game_state.get('time_left', 30),
                 'last_result': game_state.get('last_result'),
                 'spinning_result': game_state.get('spinning_result')
             }
         })
     except Exception as e:
+        print(f"Game state API error: {e}")
         return jsonify({
             'success': False,
             'message': str(e)
