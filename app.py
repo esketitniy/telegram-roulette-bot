@@ -142,6 +142,28 @@ def place_bet():
     
     return jsonify({'success': True, 'new_balance': current_user.balance})
 
+@app.route('/api/user_balance')
+@login_required
+def get_user_balance():
+    return jsonify({'balance': current_user.balance})
+
+# Добавляем также API для получения последних результатов
+@app.route('/api/recent_results')
+def get_recent_results():
+    recent_rounds = GameRound.query.filter(
+        GameRound.winning_number.isnot(None)
+    ).order_by(GameRound.end_time.desc()).limit(10).all()
+    
+    results = []
+    for round in recent_rounds:
+        results.append({
+            'number': round.winning_number,
+            'color': round.winning_color,
+            'round': round.round_number
+        })
+    
+    return jsonify({'results': results})
+    
 # WebSocket события
 @socketio.on('connect')
 def on_connect():
