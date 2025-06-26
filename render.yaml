@@ -10,3 +10,4 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+    healthCheckPath: /
