@@ -1,3 +1,14 @@
+// В начале файла добавьте глобальную переменную
+window.switchTab = function(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+    
+    document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.getElementById(`${tab}Form`).classList.add('active');
+    
+    document.getElementById('authError').textContent = '';
+};
+
 class RouletteGame {
     constructor() {
         this.socket = io();
