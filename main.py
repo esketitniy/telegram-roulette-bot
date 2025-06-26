@@ -1968,8 +1968,7 @@ def index():
         }
     </script>
 </body>
-</html>
-''')
+</html>'''
     
 # API endpoints
 @app.route('/api/status')
