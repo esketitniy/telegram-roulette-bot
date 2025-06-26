@@ -210,9 +210,9 @@ def init_application():
     
     print("✅ Database initialized")
     
-    # Инициализация игрового состояния
+    # Принудительная инициализация игрового состояния
     global game_state
-    game_state = {
+    game_state.update({
         'round': 0,
         'phase': 'betting',
         'time_left': 30,
@@ -220,7 +220,9 @@ def init_application():
         'last_result': None,
         'spinning_result': None,
         'start_time': time.time()
-    }
+    })
+    
+    print(f"🎮 Game state initialized: {game_state}")
     
     # Запуск игрового движка
     try:
@@ -229,7 +231,8 @@ def init_application():
         print("✅ Game engine started")
         
         # Даем время движку запуститься
-        time.sleep(1)
+        time.sleep(2)
+        print(f"🎯 Game state after engine start: {game_state}")
         
     except Exception as e:
         print(f"❌ Failed to start game engine: {e}")
@@ -238,6 +241,7 @@ def init_application():
         return False
     
     return True
+
 
 def get_user(telegram_id):
     """Получение пользователя с отладкой"""
@@ -2189,10 +2193,13 @@ def api_place_bet():
         bet_type = data.get('bet_type')
         bet_amount = data.get('bet_amount')
         
+        print(f"🎯 Bet request: {bet_type} for {bet_amount}")
+        print(f"🎮 Current game state: {game_state}")
+        
         if not all([session_token, bet_type, bet_amount]):
             return jsonify({
                 'success': False,
-                'message': 'Missing required fields'
+                'message': 'All fields are required'
             }), 400
         
         # Проверяем сессию
@@ -2206,6 +2213,14 @@ def api_place_bet():
         user_id = user[0]
         current_balance = user[3]
         
+        # Проверяем фазу игры (с безопасной проверкой)
+        current_phase = game_state.get('phase', 'betting')
+        if current_phase != 'betting':
+            return jsonify({
+                'success': False,
+                'message': f'Betting is closed. Current phase: {current_phase}'
+            }), 400
+        
         # Проверяем баланс
         if current_balance < bet_amount:
             return jsonify({
@@ -2213,43 +2228,53 @@ def api_place_bet():
                 'message': 'Insufficient balance'
             }), 400
         
-        # Проверяем фазу игры
-        if game_state['phase'] != 'betting':
+        # Проверяем валидность ставки
+        valid_bets = ['red', 'black', 'green'] + [str(i) for i in range(37)]
+        if bet_type not in valid_bets:
             return jsonify({
                 'success': False,
-                'message': 'Betting is closed'
+                'message': 'Invalid bet type'
             }), 400
         
-        # Списываем ставку с баланса
+        # Списываем средства
         new_balance = current_balance - bet_amount
-        if update_user_balance(user_id, new_balance):
-            # Сохраняем ставку
-            if str(user_id) not in game_state['bets']:
-                game_state['bets'][str(user_id)] = []
-            
-            game_state['bets'][str(user_id)].append({
-                'bet_type': bet_type,
-                'bet_amount': bet_amount
-            })
-            
-            return jsonify({
-                'success': True,
-                'message': 'Bet placed successfully',
-                'new_balance': new_balance
-            })
-        else:
+        if not update_user_balance(user_id, new_balance):
             return jsonify({
                 'success': False,
                 'message': 'Failed to update balance'
             }), 500
+        
+        # Добавляем ставку в игровое состояние (с безопасной инициализацией)
+        if 'bets' not in game_state:
+            game_state['bets'] = {}
             
+        user_id_str = str(user_id)
+        if user_id_str not in game_state['bets']:
+            game_state['bets'][user_id_str] = []
+        
+        game_state['bets'][user_id_str].append({
+            'bet_type': bet_type,
+            'bet_amount': bet_amount
+        })
+        
+        print(f"✅ Bet placed: User {user_id} bet {bet_amount} on {bet_type}")
+        print(f"📊 Current bets: {game_state['bets']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Bet placed successfully',
+            'new_balance': new_balance
+        })
+        
     except Exception as e:
-        print(f"Place bet error: {e}")
+        print(f"❌ Place bet error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'message': 'Bet placement failed'
+            'message': f'Failed to place bet: {str(e)}'
         }), 500
-
+        
 @app.route('/api/game_state')
 def api_game_state():
     """Получение текущего состояния игры"""
