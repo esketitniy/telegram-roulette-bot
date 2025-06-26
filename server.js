@@ -15,8 +15,10 @@ const io = socketIo(server, {
     }
 });
 
+// Инициализируем базу данных
 const db = new Database();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
@@ -25,7 +27,7 @@ app.use(express.static('public'));
 
 // Игровые переменные
 let gameState = {
-    phase: 'betting', // 'betting' | 'spinning' | 'result'
+    phase: 'betting',
     timeLeft: 30,
     currentGameId: null,
     bets: []
@@ -55,6 +57,8 @@ app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
         
+        console.log('Попытка регистрации:', username);
+        
         if (!username || !password) {
             return res.status(400).json({ error: 'Логин и пароль обязательны' });
         }
@@ -66,12 +70,14 @@ app.post('/api/register', async (req, res) => {
         const user = await db.createUser(username, password);
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
         
+        console.log('Пользователь успешно зарегистрирован:', user.id);
         res.json({ token, user: { id: user.id, username: user.username, balance: 1000 } });
     } catch (error) {
+        console.error('Ошибка регистрации:', error);
         if (error.code === 'SQLITE_CONSTRAINT') {
             res.status(400).json({ error: 'Пользователь с таким логином уже существует' });
         } else {
-            res.status(500).json({ error: 'Ошибка сервера' });
+            res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
         }
     }
 });
@@ -79,6 +85,9 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
+        
+        console.log('Попытка входа:', username);
+        
         const user = await db.getUser(username);
 
         if (!user || !bcrypt.compareSync(password, user.password)) {
@@ -86,6 +95,8 @@ app.post('/api/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+        
+        console.log('Пользователь успешно вошел:', user.id);
         res.json({ 
             token, 
             user: { 
@@ -95,9 +106,13 @@ app.post('/api/login', async (req, res) => {
             } 
         });
     } catch (error) {
-        res.status(500).json({ error: 'Ошибка сервера' });
+        console.error('Ошибка входа:', error);
+        res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
     }
 });
+
+// Остальной код server.js остается таким же...
+// Запуск игрового цикла только после инициализации БД
 
 app.get('/api/profile', authenticateToken, async (req, res) => {
     try {
@@ -269,7 +284,10 @@ async function processBets(result, gameId) {
 }
 
 // Запуск игрового цикла
-gameLoop();
+setTimeout(() => {
+    console.log('Запуск игрового цикла...');
+    gameLoop();
+}, 1000);
 
 server.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
