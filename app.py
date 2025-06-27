@@ -1,309 +1,173 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+import secrets
+import time
 import random
 import threading
-import time
+import hashlib
+from datetime import datetime, timedelta
 import os
-import signal
-import atexit
 
-# Создание приложения
 app = Flask(__name__)
-
-# Конфигурация
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-
-# База данных
-database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///roulette.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-
-# SocketIO с настройками для продакшена
-socketio = SocketIO(
-    app, 
-    cors_allowed_origins="*",
-    ping_timeout=60,
-    ping_interval=25,
-    logger=False,
-    engineio_logger=False
-)
-
-# Модели базы данных
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(120), nullable=False)
-    balance = db.Column(db.Float, default=1000.0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class Bet(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    game_id = db.Column(db.String(50), nullable=False)
-    bet_type = db.Column(db.String(20), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    result = db.Column(db.String(20))
-    payout = db.Column(db.Float, default=0.0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class GameHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    game_id = db.Column(db.String(50), unique=True, nullable=False)
-    winning_number = db.Column(db.Integer, nullable=False)
-    winning_color = db.Column(db.String(10), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-# Конфигурация рулетки
-ROULETTE_NUMBERS = {
-    0: 'green',
-    1: 'red', 2: 'black', 3: 'red', 4: 'black', 5: 'red', 6: 'black', 7: 'red', 8: 'black', 9: 'red', 10: 'black',
-    11: 'black', 12: 'red', 13: 'black', 14: 'red', 15: 'black', 16: 'red', 17: 'black', 18: 'red', 19: 'red', 20: 'black',
-    21: 'red', 22: 'black', 23: 'red', 24: 'black', 25: 'red', 26: 'black', 27: 'red', 28: 'black', 29: 'black', 30: 'red',
-    31: 'black', 32: 'red', 33: 'black', 34: 'red', 35: 'black', 36: 'red'
-}
-
-PAYOUT_MULTIPLIERS = {'red': 2.0, 'black': 2.0, 'green': 35.0}
+app.config['SECRET_KEY'] = secrets.token_hex(16)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Глобальные переменные для игры
-current_game = {
-    'state': 'betting',
-    'game_id': None,
-    'bets': {},
+game_state = {
+    'phase': 'betting',  # betting, spinning, waiting
     'time_left': 25,
-    'winning_number': None,
-    'winning_color': None
+    'current_bets': {},
+    'history': [],
+    'active_players': set(),
+    'round_id': 1,
+    'result': None,
+    'hash': None
 }
 
-game_active = True
+# Конфигурация рулетки
+ROULETTE_CONFIG = {
+    'red_count': 7,
+    'black_count': 7,
+    'green_count': 1,
+    'red_multiplier': 2,
+    'black_multiplier': 2,
+    'green_multiplier': 14,
+    'min_bet': 10,
+    'betting_time': 25,
+    'spinning_time': 10
+}
 
-def generate_game_id():
-    return f"game_{int(time.time())}_{random.randint(1000, 9999)}"
+def init_db():
+    """Инициализация базы данных"""
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    
+    # Таблица пользователей
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        balance INTEGER DEFAULT 1000,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    # Таблица истории ставок
+    c.execute('''CREATE TABLE IF NOT EXISTS bets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        round_id INTEGER,
+        bet_type TEXT,
+        amount INTEGER,
+        result TEXT,
+        win_amount INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    
+    # Таблица истории игр
+    c.execute('''CREATE TABLE IF NOT EXISTS game_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        round_id INTEGER,
+        result TEXT,
+        hash TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    conn.commit()
+    conn.close()
 
-def get_last_results(limit=10):
-    try:
-        results = GameHistory.query.order_by(GameHistory.created_at.desc()).limit(limit).all()
-        return [{'number': r.winning_number, 'color': r.winning_color} for r in results]
-    except Exception as e:
-        print(f"Ошибка получения истории: {e}")
-        return []
+def get_db_connection():
+    """Получение соединения с базой данных"""
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def generate_game_hash():
+    """Генерация хеша для честной игры"""
+    timestamp = str(time.time())
+    random_data = str(random.random())
+    return hashlib.sha256((timestamp + random_data).encode()).hexdigest()
 
 def spin_roulette():
-    winning_number = random.randint(0, 36)
-    winning_color = ROULETTE_NUMBERS[winning_number]
-    return winning_number, winning_color
+    """Определение результата рулетки"""
+    colors = ['red'] * ROULETTE_CONFIG['red_count'] + \
+             ['black'] * ROULETTE_CONFIG['black_count'] + \
+             ['green'] * ROULETTE_CONFIG['green_count']
+    return random.choice(colors)
 
-def process_bets(game_id, winning_color):
-    try:
-        if game_id not in current_game['bets']:
-            return
-        
-        for user_id, user_bets in current_game['bets'][game_id].items():
-            user = User.query.get(user_id)
-            if not user:
-                continue
-                
-            for bet_info in user_bets:
-                bet_type = bet_info['type']
-                amount = bet_info['amount']
-                
-                if bet_type == winning_color:
-                    result = 'win'
-                    payout = amount * PAYOUT_MULTIPLIERS[bet_type]
-                    user.balance += payout
-                else:
-                    result = 'lose'
-                    payout = 0
-                
-                bet = Bet(
-                    user_id=user_id,
-                    game_id=game_id,
-                    bet_type=bet_type,
-                    amount=amount,
-                    result=result,
-                    payout=payout
-                )
-                db.session.add(bet)
-        
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка обработки ставок: {e}")
-        db.session.rollback()
+def calculate_winnings(bet_type, amount, result):
+    """Расчет выигрыша"""
+    if bet_type == result:
+        if result == 'green':
+            return amount * ROULETTE_CONFIG['green_multiplier']
+        else:
+            return amount * ROULETTE_CONFIG['red_multiplier']
+    return 0
 
-def game_loop():
-    global game_active
-    print("🎮 Игровой цикл запущен")
-    
-    while game_active:
-        try:
-            # Создаем контекст приложения для каждой итерации
-            with app.app_context():
-                # Фаза ставок (25 секунд)
-                current_game['state'] = 'betting'
-                current_game['game_id'] = generate_game_id()
-                current_game['bets'][current_game['game_id']] = {}
-                current_game['time_left'] = 25
-                
-                print(f"🎯 Новая игра запущена: {current_game['game_id']}")
-                
-                socketio.emit('game_state', {
-                    'state': 'betting',
-                    'time_left': 25,
-                    'game_id': current_game['game_id']
-                })
-                
-                # Обратный отсчет ставок
-                for i in range(25, 0, -1):
-                    if not game_active:
-                        break
-                    current_game['time_left'] = i
-                    print(f"⏰ Время ставок: {i}")
-                    socketio.emit('betting_time', {'time_left': i})
-                    socketio.sleep(1)
-                
-                if not game_active:
-                    break
-                
-                # Фаза вращения (10 секунд)
-                current_game['state'] = 'spinning'
-                winning_number, winning_color = spin_roulette()
-                current_game['winning_number'] = winning_number
-                current_game['winning_color'] = winning_color
-                
-                print(f"🎲 Выпало: {winning_number} ({winning_color})")
-                
-                socketio.emit('game_state', {
-                    'state': 'spinning',
-                    'winning_number': winning_number,
-                    'winning_color': winning_color
-                })
-                
-                # Анимация вращения
-                socketio.sleep(10)
-                
-                if not game_active:
-                    break
-                
-                # Обработка результатов
-                process_bets(current_game['game_id'], winning_color)
-                
-                # Сохранение результата в историю
-                try:
-                    game_result = GameHistory(
-                        game_id=current_game['game_id'],
-                        winning_number=winning_number,
-                        winning_color=winning_color
-                    )
-                    db.session.add(game_result)
-                    db.session.commit()
-                except Exception as e:
-                    print(f"Ошибка сохранения истории: {e}")
-                    db.session.rollback()
-                
-                # Отправка результатов
-                socketio.emit('game_result', {
-                    'winning_number': winning_number,
-                    'winning_color': winning_color,
-                    'game_id': current_game['game_id']
-                })
-                
-                # Отправка обновленной истории
-                socketio.emit('history_update', {'history': get_last_results()})
-                
-                # Пауза перед следующей игрой
-                socketio.sleep(3)
-                
-        except Exception as e:
-            print(f"❌ Ошибка в игровом цикле: {str(e)}")
-            socketio.sleep(5)
-
-# Маршруты
 @app.route('/')
 def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    user = User.query.get(session['user_id'])
-    if not user:
-        session.clear()
-        return redirect(url_for('login'))
-        
-    history = get_last_results()
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    history = conn.execute('SELECT * FROM game_history ORDER BY id DESC LIMIT 10').fetchall()
+    conn.close()
+    
     return render_template('index.html', user=user, history=history)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
-        password = request.form.get('password', '')
+        username = request.form['username']
+        password = request.form['password']
         
-        if not username or not email or not password:
-            flash('Все поля обязательны для заполнения')
+        if len(username) < 3:
+            flash('Имя пользователя должно содержать минимум 3 символа')
             return render_template('register.html')
         
         if len(password) < 6:
             flash('Пароль должен содержать минимум 6 символов')
             return render_template('register.html')
         
-        if User.query.filter_by(username=username).first():
+        conn = get_db_connection()
+        existing_user = conn.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        
+        if existing_user:
             flash('Пользователь с таким именем уже существует')
+            conn.close()
             return render_template('register.html')
         
-        if User.query.filter_by(email=email).first():
-            flash('Пользователь с таким email уже существует')
-            return render_template('register.html')
+        password_hash = generate_password_hash(password)
+        conn.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', 
+                    (username, password_hash))
+        conn.commit()
+        conn.close()
         
-        try:
-            user = User(
-                username=username,
-                email=email,
-                password_hash=generate_password_hash(password)
-            )
-            db.session.add(user)
-            db.session.commit()
-            
-            session['user_id'] = user.id
-            session['username'] = user.username
-            session.permanent = True
-            
-            flash('Регистрация успешна!')
-            return redirect(url_for('index'))
-        except Exception as e:
-            db.session.rollback()
-            flash('Ошибка при регистрации. Попробуйте снова.')
-            print(f"Registration error: {e}")
+        flash('Регистрация успешна! Войдите в систему')
+        return redirect(url_for('login'))
     
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+        username = request.form['username']
+        password = request.form['password']
         remember = 'remember' in request.form
         
-        if not username or not password:
-            flash('Введите имя пользователя и пароль')
-            return render_template('login.html')
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        conn.close()
         
-        user = User.query.filter_by(username=username).first()
-        
-        if user and check_password_hash(user.password_hash, password):
-            session['user_id'] = user.id
-            session['username'] = user.username
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
             if remember:
                 session.permanent = True
                 app.permanent_session_lifetime = timedelta(days=30)
-            
             return redirect(url_for('index'))
         else:
             flash('Неверное имя пользователя или пароль')
@@ -320,201 +184,207 @@ def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    user = User.query.get(session['user_id'])
-    if not user:
-        session.clear()
-        return redirect(url_for('login'))
-        
-    bets = Bet.query.filter_by(user_id=user.id).order_by(Bet.created_at.desc()).limit(50).all()
-    return render_template('profile.html', user=user, bets=bets)
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    
+    # История ставок
+    bets = conn.execute('''
+        SELECT b.*, gh.result as game_result, gh.created_at as game_time
+        FROM bets b
+        JOIN game_history gh ON b.round_id = gh.round_id
+        WHERE b.user_id = ?
+        ORDER BY b.created_at DESC
+        LIMIT 50
+    ''', (session['user_id'],)).fetchall()
+    
+    # Статистика
+    stats = conn.execute('''
+        SELECT 
+            COUNT(*) as total_bets,
+            SUM(amount) as total_wagered,
+            SUM(win_amount) as total_won,
+            COUNT(CASE WHEN win_amount > 0 THEN 1 END) as wins
+        FROM bets WHERE user_id = ?
+    ''', (session['user_id'],)).fetchone()
+    
+    conn.close()
+    
+    return render_template('profile.html', user=user, bets=bets, stats=stats)
 
-# WebSocket события
+@app.route('/api/place_bet', methods=['POST'])
+def place_bet():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Не авторизован'}), 401
+    
+    data = request.json
+    bet_type = data.get('bet_type')
+    amount = int(data.get('amount', 0))
+    
+    if bet_type not in ['red', 'black', 'green']:
+        return jsonify({'error': 'Неверный тип ставки'}), 400
+    
+    if amount < ROULETTE_CONFIG['min_bet']:
+        return jsonify({'error': f'Минимальная ставка {ROULETTE_CONFIG["min_bet"]}'}), 400
+    
+    if game_state['phase'] != 'betting':
+        return jsonify({'error': 'Ставки не принимаются'}), 400
+    
+    conn = get_db_connection()
+    user = conn.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    
+    if user['balance'] < amount:
+        conn.close()
+        return jsonify({'error': 'Недостаточно средств'}), 400
+    
+    # Обновляем баланс
+    conn.execute('UPDATE users SET balance = balance - ? WHERE id = ?', 
+                (amount, session['user_id']))
+    conn.commit()
+    conn.close()
+    
+    # Добавляем ставку в текущую игру
+    user_key = f"user_{session['user_id']}"
+    game_state['current_bets'][user_key] = {
+        'user_id': session['user_id'],
+        'username': session['username'],
+        'bet_type': bet_type,
+        'amount': amount
+    }
+    
+    # Отправляем обновление всем игрокам
+    socketio.emit('bet_placed', {
+        'username': session['username'],
+        'bet_type': bet_type,
+        'amount': amount
+    })
+    
+    return jsonify({'success': True})
+
 @socketio.on('connect')
 def handle_connect():
-    print(f"👤 Клиент подключился: {request.sid}")
     if 'user_id' in session:
-        join_room('game_room')
-        # Отправляем текущее состояние игры
+        game_state['active_players'].add(session['username'])
+        join_room('game')
         emit('game_state', {
-            'state': current_game['state'],
-            'time_left': current_game['time_left'],
-            'game_id': current_game['game_id']
+            'phase': game_state['phase'],
+            'time_left': game_state['time_left'],
+            'current_bets': list(game_state['current_bets'].values()),
+            'history': game_state['history'][-10:]
         })
-        emit('history_update', {'history': get_last_results()})
-        print(f"🎮 Пользователь {session.get('username')} подключился к игре")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print(f"👤 Клиент отключился: {request.sid}")
-    if 'user_id' in session:
-        leave_room('game_room')
+    if 'username' in session:
+        game_state['active_players'].discard(session['username'])
+        leave_room('game')
 
-@socketio.on('place_bet')
-def handle_bet(data):
-    if 'user_id' not in session:
-        emit('bet_error', {'message': 'Необходимо войти в систему'})
-        return
-    
-    if current_game['state'] != 'betting':
-        emit('bet_error', {'message': 'Ставки не принимаются'})
-        return
-    
-    try:
-        user_id = session['user_id']
-        user = User.query.get(user_id)
+def game_loop():
+    """Основной игровой цикл"""
+    while True:
+        # Фаза ставок
+        game_state['phase'] = 'betting'
+        game_state['time_left'] = ROULETTE_CONFIG['betting_time']
+        game_state['hash'] = generate_game_hash()
         
-        if not user:
-            emit('bet_error', {'message': 'Пользователь не найден'})
-            return
-        
-        bet_type = data.get('type')
-        amount = float(data.get('amount', 0))
-        
-        if amount <= 0 or amount > user.balance:
-            emit('bet_error', {'message': 'Недостаточно средств'})
-            return
-        
-        if bet_type not in ['red', 'black', 'green']:
-            emit('bet_error', {'message': 'Неверный тип ставки'})
-            return
-        
-        # Списание суммы ставки
-        user.balance -= amount
-        db.session.commit()
-        
-        # Сохранение ставки
-        game_id = current_game['game_id']
-        if game_id not in current_game['bets']:
-            current_game['bets'][game_id] = {}
-        
-        if user_id not in current_game['bets'][game_id]:
-            current_game['bets'][game_id][user_id] = []
-        
-        current_game['bets'][game_id][user_id].append({
-            'type': bet_type,
-            'amount': amount
+        socketio.emit('phase_change', {
+            'phase': 'betting',
+            'time_left': game_state['time_left'],
+            'hash': game_state['hash']
         })
         
-        emit('bet_placed', {
-            'type': bet_type,
-            'amount': amount,
-            'balance': user.balance
+        # Отсчет времени для ставок
+        for i in range(ROULETTE_CONFIG['betting_time']):
+            time.sleep(1)
+            game_state['time_left'] -= 1
+            socketio.emit('time_update', {'time_left': game_state['time_left']})
+        
+        # Фаза вращения
+        game_state['phase'] = 'spinning'
+        game_state['time_left'] = ROULETTE_CONFIG['spinning_time']
+        game_state['result'] = spin_roulette()
+        
+        socketio.emit('phase_change', {
+            'phase': 'spinning',
+            'time_left': game_state['time_left'],
+            'result': game_state['result']
         })
         
-        print(f"💰 Ставка размещена: {user.username} - {bet_type} - {amount}")
+        # Отсчет времени вращения
+        for i in range(ROULETTE_CONFIG['spinning_time']):
+            time.sleep(1)
+            game_state['time_left'] -= 1
+            socketio.emit('time_update', {'time_left': game_state['time_left']})
         
-    except Exception as e:
-        db.session.rollback()
-        emit('bet_error', {'message': 'Ошибка при размещении ставки'})
-        print(f"❌ Bet error: {e}")
+        # Обработка результатов
+        process_results()
+        
+        # Пауза между играми
+        game_state['phase'] = 'waiting'
+        time.sleep(3)
+        
+        # Подготовка к следующему раунду
+        game_state['round_id'] += 1
+        game_state['current_bets'] = {}
 
-# Функция запуска игрового цикла
-def start_game_loop():
-    """Запуск игрового цикла в отдельном потоке"""
-    print("🚀 Запуск игрового цикла...")
-    socketio.start_background_task(game_loop)
-
-# Обработчик завершения работы
-def cleanup():
-    global game_active
-    game_active = False
-    print("🛑 Игровой цикл остановлен")
-
-# Регистрация обработчиков сигналов
-signal.signal(signal.SIGINT, lambda s, f: cleanup())
-signal.signal(signal.SIGTERM, lambda s, f: cleanup())
-atexit.register(cleanup)
-
-# Инициализация базы данных
-def init_db():
-    try:
-        with app.app_context():
-            db.create_all()
-            print("📊 База данных инициализирована")
-            
-            # Проверяем, есть ли записи в истории
-            history_count = GameHistory.query.count()
-            print(f"📈 Записей в истории: {history_count}")
-            
-            # Создаем тестовые записи если их нет
-            if history_count == 0:
-                test_results = [
-                    {'number': 7, 'color': 'red'},
-                    {'number': 0, 'color': 'green'},
-                    {'number': 22, 'color': 'black'},
-                    {'number': 14, 'color': 'red'},
-                    {'number': 31, 'color': 'black'}
-                ]
-                
-                for i, result in enumerate(test_results):
-                    game_history = GameHistory(
-                        game_id=f"test_game_{i}",
-                        winning_number=result['number'],
-                        winning_color=result['color']
-                    )
-                    db.session.add(game_history)
-                
-                db.session.commit()
-                print("🎲 Добавлены тестовые результаты")
-                
-    except Exception as e:
-        print(f"❌ Ошибка инициализации базы данных: {e}")
-
-# Проверка состояния приложения
-@app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'ok',
-        'game_active': game_active,
-        'current_state': current_game['state'],
-        'time_left': current_game['time_left']
+def process_results():
+    """Обработка результатов игры"""
+    result = game_state['result']
+    round_id = game_state['round_id']
+    
+    # Сохраняем результат в историю
+    conn = get_db_connection()
+    conn.execute('INSERT INTO game_history (round_id, result, hash) VALUES (?, ?, ?)',
+                (round_id, result, game_state['hash']))
+    
+    # Обрабатываем ставки
+    winners = []
+    for user_key, bet_data in game_state['current_bets'].items():
+        user_id = bet_data['user_id']
+        bet_type = bet_data['bet_type']
+        amount = bet_data['amount']
+        
+        win_amount = calculate_winnings(bet_type, amount, result)
+        
+        # Сохраняем ставку в базу
+        conn.execute('''INSERT INTO bets (user_id, round_id, bet_type, amount, result, win_amount) 
+                       VALUES (?, ?, ?, ?, ?, ?)''',
+                    (user_id, round_id, bet_type, amount, result, win_amount))
+        
+        # Начисляем выигрыш
+        if win_amount > 0:
+            conn.execute('UPDATE users SET balance = balance + ? WHERE id = ?', 
+                        (win_amount, user_id))
+            winners.append({
+                'username': bet_data['username'],
+                'bet_type': bet_type,
+                'amount': amount,
+                'win_amount': win_amount
+            })
+    
+    conn.commit()
+    conn.close()
+    
+    # Обновляем историю
+    game_state['history'].append({
+        'round_id': round_id,
+        'result': result,
+        'timestamp': datetime.now().isoformat()
+    })
+    
+    # Отправляем результаты
+    socketio.emit('game_result', {
+        'result': result,
+        'winners': winners,
+        'history': game_state['history'][-10:]
     })
 
-# API для получения статистики
-@app.route('/api/stats')
-def get_stats():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        total_games = GameHistory.query.count()
-        user_bets = Bet.query.filter_by(user_id=session['user_id']).count()
-        
-        # Статистика по цветам
-        red_count = GameHistory.query.filter_by(winning_color='red').count()
-        black_count = GameHistory.query.filter_by(winning_color='black').count()
-        green_count = GameHistory.query.filter_by(winning_color='green').count()
-        
-        return jsonify({
-            'total_games': total_games,
-            'user_bets': user_bets,
-            'color_stats': {
-                'red': red_count,
-                'black': black_count,
-                'green': green_count
-            }
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 if __name__ == '__main__':
-    # Инициализация базы данных
     init_db()
     
-    # Запуск игрового цикла после инициализации
-    start_game_loop()
+    # Запускаем игровой цикл в отдельном потоке
+    game_thread = threading.Thread(target=game_loop)
+    game_thread.daemon = True
+    game_thread.start()
     
-    # Настройка для продакшена
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') == 'development'
-    
-    print(f"🌐 Запуск сервера на порту {port}")
-    print(f"🔧 Debug режим: {debug}")
-    
-    socketio.run(
-        app, 
-        host='0.0.0.0', 
-        port=port, 
-        debug=debug,
-        allow_unsafe_werkzeug=True
-    )
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
