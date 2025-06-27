@@ -410,9 +410,8 @@ if __name__ == '__main__':
     
     # Используем eventlet для продакшена
     socketio.run(
-        app, 
-        host='0.0.0.0', 
-        port=port, 
-        debug=debug,
-        allow_unsafe_werkzeug=True  # Для совместимости с новыми версиями
+    app, 
+    host='0.0.0.0', 
+    port=port, 
+    debug=debug
     )
