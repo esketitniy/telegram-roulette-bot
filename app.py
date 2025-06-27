@@ -101,12 +101,30 @@ def generate_game_hash():
     return hashlib.sha256((timestamp + random_data).encode()).hexdigest()
 
 def spin_roulette():
-    """Определение результата рулетки"""
-    colors = ['red'] * ROULETTE_CONFIG['red_count'] + \
-             ['black'] * ROULETTE_CONFIG['black_count'] + \
-             ['green'] * ROULETTE_CONFIG['green_count']
-    return random.choice(colors)
-
+    """Определение результата рулетки (15 секторов)"""
+    # 15 секторов: красный-черный-красный-черный-зеленый...
+    roulette_sectors = [
+        {'number': 1, 'color': 'red'},      # сектор 1
+        {'number': 2, 'color': 'black'},    # сектор 2
+        {'number': 3, 'color': 'red'},      # сектор 3
+        {'number': 4, 'color': 'black'},    # сектор 4
+        {'number': 0, 'color': 'green'},    # сектор 5 (зеленый)
+        {'number': 5, 'color': 'red'},      # сектор 6
+        {'number': 6, 'color': 'black'},    # сектор 7
+        {'number': 7, 'color': 'red'},      # сектор 8
+        {'number': 8, 'color': 'black'},    # сектор 9
+        {'number': 9, 'color': 'red'},      # сектор 10
+        {'number': 10, 'color': 'black'},   # сектор 11
+        {'number': 11, 'color': 'red'},     # сектор 12
+        {'number': 12, 'color': 'black'},   # сектор 13
+        {'number': 13, 'color': 'red'},     # сектор 14
+        {'number': 14, 'color': 'black'}    # сектор 15
+    ]
+    
+    result = random.choice(roulette_sectors)
+    game_state['winning_number'] = result['number']
+    return result['color']
+    
 def calculate_winnings(bet_type, amount, result):
     """Расчет выигрыша"""
     if bet_type == result:
