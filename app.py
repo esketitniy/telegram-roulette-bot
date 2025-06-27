@@ -34,8 +34,8 @@ socketio = SocketIO(
     app, 
     cors_allowed_origins="*",
     async_mode='threading',
-    logger=False,
-    engineio_logger=False
+    logger=True,
+    engineio_logger=True
 )
 
 # Глобальные переменные
@@ -46,6 +46,7 @@ game_state = {
     'round_number': 1
 }
 game_started = False
+game_thread = None
 
 # Числа европейской рулетки
 ROULETTE_NUMBERS = {
@@ -138,6 +139,8 @@ def place_bet():
         bet_type = data.get('bet_type')
         amount = float(data.get('amount'))
         
+        print(f"Попытка ставки: {bet_type} на {amount}, статус игры: {game_state['status']}")
+        
         if game_state['status'] != 'betting':
             return jsonify({'success': False, 'message': 'Ставки не принимаются'})
         
@@ -171,10 +174,12 @@ def place_bet():
             'amount': amount
         }, room='game')
         
+        print(f"Ставка размещена успешно")
         return jsonify({'success': True, 'new_balance': current_user.balance})
         
     except Exception as e:
         db.session.rollback()
+        print(f"Ошибка размещения ставки: {e}")
         return jsonify({'success': False, 'message': 'Ошибка сервера'})
 
 @app.route('/api/user_balance')
@@ -199,6 +204,7 @@ def api_recent_results():
                 'timestamp': round.end_time.isoformat() if round.end_time else None
             })
         
+        print(f"Отправляем {len(results)} результатов")
         return jsonify({'results': results})
     except Exception as e:
         print(f"Ошибка получения результатов: {e}")
@@ -250,17 +256,45 @@ def get_player_stats():
             'net_profit': 0
         })
 
+@app.route('/api/game_state')
+def get_game_state():
+    """API для получения текущего состояния игры"""
+    return jsonify(game_state)
+
+@app.route('/api/start_game', methods=['POST'])
+def start_game_api():
+    """API для принудительного запуска игры (для отладки)"""
+    global game_started, game_thread
+    
+    if not game_started:
+        print("🎰 Принудительный запуск игры через API")
+        game_started = True
+        game_thread = threading.Thread(target=game_loop, daemon=True)
+        game_thread.start()
+        return jsonify({'success': True, 'message': 'Игра запущена'})
+    else:
+        return jsonify({'success': False, 'message': 'Игра уже запущена'})
+
 # WebSocket события
 @socketio.on('connect')
 def on_connect():
+    print(f"Пользователь подключился: {current_user.username if current_user.is_authenticated else 'Неизвестный'}")
     if current_user.is_authenticated:
         join_room('game')
         emit('game_state', game_state)
+        print(f"Отправлено состояние игры: {game_state}")
 
 @socketio.on('disconnect')
 def on_disconnect():
+    print(f"Пользователь отключился: {current_user.username if current_user.is_authenticated else 'Неизвестный'}")
     if current_user.is_authenticated:
         leave_room('game')
+
+@socketio.on('request_game_state')
+def handle_game_state_request():
+    """Обработчик запроса состояния игры"""
+    print(f"Запрос состояния игры от {current_user.username}")
+    emit('game_state', game_state)
 
 def get_winning_color(number):
     return ROULETTE_NUMBERS.get(number, 'green')
@@ -271,6 +305,7 @@ def process_bets(winning_number, winning_color):
     
     try:
         round_bets = Bet.query.filter_by(round_id=current_round.id).all()
+        print(f"Обрабатываем {len(round_bets)} ставок для раунда {current_round.round_number}")
         
         for bet in round_bets:
             if bet.bet_type == winning_color:
@@ -279,11 +314,13 @@ def process_bets(winning_number, winning_color):
                 user = User.query.get(bet.user_id)
                 if user:
                     user.balance += bet.actual_win
+                    print(f"Игрок {user.username} выиграл {bet.actual_win}₽")
             else:
                 bet.is_winner = False
                 bet.actual_win = 0
         
         db.session.commit()
+        print("Ставки обработаны успешно")
         
     except Exception as e:
         db.session.rollback()
@@ -292,20 +329,16 @@ def process_bets(winning_number, winning_color):
 def game_loop():
     global current_round, game_state, game_started
     
-    if game_started:
-        return
-    
-    game_started = True
     print("🎰 Игровой цикл запущен!")
     
     with app.app_context():
-        while True:
+        while game_started:
             try:
                 print(f"🎲 Начинается раунд #{game_state['round_number']}")
                 
-                # Фаза ставок (30 секунд)
+                # Фаза ставок (20 секунд для тестирования)
                 game_state['status'] = 'betting'
-                game_state['time_left'] = 30
+                game_state['time_left'] = 20
                 
                 current_round = GameRound(
                     round_number=game_state['round_number'],
@@ -314,13 +347,15 @@ def game_loop():
                 db.session.add(current_round)
                 db.session.commit()
                 
+                print("📡 Отправляем new_round событие")
                 socketio.emit('new_round', {
                     'round_number': game_state['round_number'],
                     'status': 'betting',
-                    'time_left': 30
+                    'time_left': 20
                 }, room='game')
                 
-                for i in range(30, 0, -1):
+                # Обратный отсчет для ставок
+                for i in range(20, 0, -1):
                     game_state['time_left'] = i
                     socketio.emit('timer_update', {
                         'time_left': i, 
@@ -330,9 +365,9 @@ def game_loop():
                 
                 print("⏰ Прием ставок завершен")
                 
-                # Фаза вращения (10 секунд)
+                # Фаза вращения (8 секунд)
                 game_state['status'] = 'spinning'
-                game_state['time_left'] = 10
+                game_state['time_left'] = 8
                 current_round.status = 'spinning'
                 db.session.commit()
                 
@@ -343,10 +378,11 @@ def game_loop():
                 
                 socketio.emit('spin_start', {
                     'winning_number': winning_number,
-                    'time': 10
+                    'time': 8
                 }, room='game')
                 
-                for i in range(10, 0, -1):
+                # Обратный отсчет для вращения
+                for i in range(8, 0, -1):
                     game_state['time_left'] = i
                     socketio.emit('timer_update', {
                         'time_left': i, 
@@ -358,7 +394,7 @@ def game_loop():
                 current_round.winning_number = winning_number
                 current_round.winning_color = winning_color
                 current_round.status = 'finished'
-                current_round.end_time = datetime.now(timezone.utc)  # ← ИСПРАВЛЕНИЕ
+                current_round.end_time = datetime.now(timezone.utc)
                 db.session.commit()
                 
                 process_bets(winning_number, winning_color)
@@ -371,8 +407,19 @@ def game_loop():
                 
                 print(f"✅ Раунд #{game_state['round_number']} завершен")
                 
+                # Пауза между раундами
+                game_state['status'] = 'waiting'
+                game_state['time_left'] = 5
+                
+                for i in range(5, 0, -1):
+                    game_state['time_left'] = i
+                    socketio.emit('timer_update', {
+                        'time_left': i, 
+                        'status': 'waiting'
+                    }, room='game')
+                    time.sleep(1)
+                
                 game_state['round_number'] += 1
-                time.sleep(3)  # Пауза между раундами
                 
             except Exception as e:
                 print(f'❌ Ошибка в игровом цикле: {e}')
@@ -380,6 +427,8 @@ def game_loop():
 
 # Инициализация при запуске
 def initialize_app():
+    global game_started, game_thread
+    
     with app.app_context():
         try:
             print("🗃️ Инициализация базы данных...")
@@ -394,9 +443,18 @@ def initialize_app():
                 db.session.commit()
                 print("✅ Создан тестовый пользователь: demo/demo123")
             
-            print("🚀 Запуск игрового цикла...")
-            game_thread = threading.Thread(target=game_loop, daemon=True)
-            game_thread.start()
+            # Автозапуск игры через 3 секунды
+            def delayed_start():
+                time.sleep(3)
+                if not game_started:
+                    print("🚀 Автозапуск игрового цикла...")
+                    global game_started, game_thread
+                    game_started = True
+                    game_thread = threading.Thread(target=game_loop, daemon=True)
+                    game_thread.start()
+            
+            start_thread = threading.Thread(target=delayed_start, daemon=True)
+            start_thread.start()
             
         except Exception as e:
             print(f"❌ Ошибка инициализации: {e}")
