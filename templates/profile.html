@@ -4,88 +4,85 @@
 <div class="profile-container">
     <div class="profile-header">
         <div class="profile-info">
-            <i class="fas fa-user-circle"></i>
-            <div>
+            <div class="profile-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-details">
                 <h2>{{ user.username }}</h2>
-                <p>Баланс: <span class="balance">{{ user.balance }}₽</span></p>
+                <p>{{ user.email }}</p>
                 <p>Регистрация: {{ user.created_at.strftime('%d.%m.%Y') }}</p>
+            </div>
+        </div>
+        <div class="profile-balance">
+            <div class="balance-card">
+                <i class="fas fa-wallet"></i>
+                <div class="balance-info">
+                    <span class="balance-label">Баланс</span>
+                    <span class="balance-amount">{{ "%.2f"|format(user.balance) }}₽</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="profile-content">
-        <div class="bets-history">
-            <h3>История ставок (последние 20)</h3>
-            {% if bets %}
-            <div class="bets-table">
-                <div class="table-header">
-                    <span>Дата</span>
-                    <span>Раунд</span>
-                    <span>Ставка</span>
-                    <span>Сумма</span>
-                    <span>Результат</span>
-                    <span>Выигрыш</span>
+    <div class="profile-stats">
+        <div class="stat-card">
+            <i class="fas fa-gamepad"></i>
+            <div class="stat-info">
+                <span class="stat-value">{{ bets|length }}</span>
+                <span class="stat-label">Всего игр</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-trophy"></i>
+            <div class="stat-info">
+                <span class="stat-value">{{ bets|selectattr('result', 'equalto', 'win')|list|length }}</span>
+                <span class="stat-label">Выигрышей</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-chart-line"></i>
+            <div class="stat-info">
+                <span class="stat-value">{{ "%.1f"|format((bets|selectattr('result', 'equalto', 'win')|list|length / bets|length * 100) if bets|length > 0 else 0) }}%</span>
+                <span class="stat-label">Винрейт</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bet-history">
+        <h3>История ставок</h3>
+        <div class="history-table">
+            <div class="table-header">
+                <div class="col">Дата</div>
+                <div class="col">Ставка</div>
+                <div class="col">Сумма</div>
+                <div class="col">Результат</div>
+                <div class="col">Выплата</div>
+            </div>
+            {% for bet in bets %}
+            <div class="table-row {{ 'win' if bet.result == 'win' else 'lose' }}">
+                <div class="col">{{ bet.created_at.strftime('%d.%m %H:%M') }}</div>
+                <div class="col">
+                    <span class="bet-type {{ bet.bet_type }}">{{ bet.bet_type.upper() }}</span>
                 </div>
-                {% for bet in bets %}
-                <div class="table-row {{ 'winner' if bet.is_winner else 'loser' }}">
-                    <span>{{ bet.created_at.strftime('%d.%m %H:%M') }}</span>
-                    <span>{{ bet.game_round.round_number }}</span>
-                    <span class="bet-type {{ bet.bet_type }}">
-                        {% if bet.bet_type == 'red' %}Красное
-                        {% elif bet.bet_type == 'black' %}Чёрное
-                        {% else %}Зелёное{% endif %}
-                    </span>
-                    <span>{{ bet.amount }}₽</span>
-                    <span>
-                        {% if bet.game_round.winning_number is not none %}
-                            <span class="winning-number {{ bet.game_round.winning_color }}">
-                                {{ bet.game_round.winning_number }}
-                            </span>
+                <div class="col">{{ "%.2f"|format(bet.amount) }}₽</div>
+                <div class="col">
+                    <span class="result {{ bet.result }}">
+                        {% if bet.result == 'win' %}
+                            <i class="fas fa-check"></i> Выигрыш
                         {% else %}
-                            В игре
+                            <i class="fas fa-times"></i> Проигрыш
                         {% endif %}
                     </span>
-                    <span class="{{ 'win' if bet.is_winner else 'loss' }}">
-                        {% if bet.is_winner %}+{{ bet.actual_win }}₽
-                        {% else %}-{{ bet.amount }}₽{% endif %}
-                    </span>
                 </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="no-bets">У вас пока нет ставок</p>
-            {% endif %}
-        </div>
-
-        <div class="profile-stats">
-            <h3>Статистика</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <i class="fas fa-gamepad"></i>
-                    <div>
-                        <span class="stat-number">{{ bets|length }}</span>
-                        <span class="stat-label">Всего ставок</span>
-                    </div>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-trophy"></i>
-                    <div>
-                        <span class="stat-number">{{ bets|selectattr('is_winner')|list|length }}</span>
-                        <span class="stat-label">Выигрышей</span>
-                    </div>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-percent"></i>
-                    <div>
-                        <span class="stat-number">
-                            {% if bets|length > 0 %}
-                                {{ "%.1f"|format((bets|selectattr('is_winner')|list|length / bets|length * 100)) }}%
-                            {% else %}0%{% endif %}
-                        </span>
-                        <span class="stat-label">Процент побед</span>
-                    </div>
+                <div class="col">
+                    {% if bet.payout > 0 %}
+                        +{{ "%.2f"|format(bet.payout) }}₽
+                    {% else %}
+                        -{{ "%.2f"|format(bet.amount) }}₽
+                    {% endif %}
                 </div>
             </div>
+            {% endfor %}
         </div>
     </div>
 </div>
