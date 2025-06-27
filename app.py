@@ -34,8 +34,8 @@ socketio = SocketIO(
     app, 
     cors_allowed_origins="*",
     async_mode='threading',
-    logger=True,
-    engineio_logger=True
+    logger=False,
+    engineio_logger=False
 )
 
 # Глобальные переменные (объявляем в начале)
@@ -268,9 +268,7 @@ def start_game_api():
     
     if not game_started:
         print("🎰 Принудительный запуск игры через API")
-        game_started = True
-        game_thread = threading.Thread(target=game_loop, daemon=True)
-        game_thread.start()
+        start_game_loop()
         return jsonify({'success': True, 'message': 'Игра запущена'})
     else:
         return jsonify({'success': False, 'message': 'Игра уже запущена'})
@@ -321,7 +319,8 @@ def process_bets(winning_number, winning_color):
         
         db.session.commit()
         print("Ставки обработаны успешно")
-        except Exception as e:
+        
+    except Exception as e:
         db.session.rollback()
         print(f'Ошибка обработки ставок: {e}')
 
@@ -355,12 +354,17 @@ def game_loop():
                 
                 # Обратный отсчет для ставок
                 for i in range(20, 0, -1):
+                    if not game_started:
+                        break
                     game_state['time_left'] = i
                     socketio.emit('timer_update', {
                         'time_left': i, 
                         'status': 'betting'
                     }, room='game')
                     time.sleep(1)
+                
+                if not game_started:
+                    break
                 
                 print("⏰ Прием ставок завершен")
                 
@@ -382,12 +386,17 @@ def game_loop():
                 
                 # Обратный отсчет для вращения
                 for i in range(8, 0, -1):
+                    if not game_started:
+                        break
                     game_state['time_left'] = i
                     socketio.emit('timer_update', {
                         'time_left': i, 
                         'status': 'spinning'
                     }, room='game')
                     time.sleep(1)
+                
+                if not game_started:
+                    break
                 
                 # Завершение раунда
                 current_round.winning_number = winning_number
@@ -411,6 +420,8 @@ def game_loop():
                 game_state['time_left'] = 5
                 
                 for i in range(5, 0, -1):
+                    if not game_started:
+                        break
                     game_state['time_left'] = i
                     socketio.emit('timer_update', {
                         'time_left': i, 
@@ -418,11 +429,16 @@ def game_loop():
                     }, room='game')
                     time.sleep(1)
                 
+                if not game_started:
+                    break
+                
                 game_state['round_number'] += 1
                 
             except Exception as e:
                 print(f'❌ Ошибка в игровом цикле: {e}')
                 time.sleep(5)
+                
+        print("🛑 Игровой цикл остановлен")
 
 def start_game_loop():
     """Функция для запуска игрового цикла"""
@@ -480,4 +496,4 @@ if __name__ == '__main__':
         host='0.0.0.0', 
         port=port,
         allow_unsafe_werkzeug=True
-            )
+    )
