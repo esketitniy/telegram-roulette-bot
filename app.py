@@ -398,7 +398,7 @@ def handle_bet(data):
         print(f"Bet error: {e}")
         
 
-// Инициализация WebSocket
+# Инициализация WebSocket
 function initializeSocket() {
     console.log('Инициализация WebSocket...');
     socket = io();
