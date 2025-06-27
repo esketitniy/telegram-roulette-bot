@@ -1,135 +1,159 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рулетка - Онлайн Казино</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <!-- Отладочная информация -->
+    <div id="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999;">
+        <div>Статус: <span id="connection-status">Подключение...</span></div>
+        <div>Фаза: <span id="debug-phase">-</span></div>
+        <div>Время: <span id="debug-time">-</span></div>
+    </div>
 
-{% block content %}
-<!-- Добавь это в начало body -->
-<div id="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999;">
-    <div>Статус: <span id="connection-status">Подключение...</span></div>
-    <div>Фаза: <span id="debug-phase">-</span></div>
-    <div>Время: <span id="debug-time">-</span></div>
-</div>
-
-<script>
-// Отладочная информация
-setInterval(() => {
-    const game = window.rouletteGame;
-    if (game) {
-        document.getElementById('connection-status').textContent = game.isConnected ? 'Подключен' : 'Отключен';
-        document.getElementById('debug-phase').textContent = document.getElementById('game-phase')?.textContent || '-';
-        document.getElementById('debug-time').textContent = document.getElementById('timer')?.textContent || '-';
-    }
-}, 1000);
-</script>
-
-<div class="game-container">
-    <!-- Информационная панель -->
-    <div class="info-panel">
-        <div class="user-info">
-            <div class="balance">
-                <span class="balance-label">Баланс:</span>
-                <span class="balance-amount" id="balance">{{ user.balance }}</span>
-                <span class="currency">💰</span>
-            </div>
-            <div class="user-name">{{ user.username }}</div>
-        </div>
-        
-        <div class="game-info">
-            <div class="timer">
-                <div class="timer-circle">
-                    <span id="timer-text">25</span>
+    <div class="container">
+        <!-- Заголовок -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">🎰 РУЛЕТКА</h1>
+                <div class="user-info">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="balance-display">
+                        Баланс: <span id="balance">{{ user.balance }}</span> 💰
+                    </span>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
                 </div>
-                <div class="phase-text" id="phase-text">Делайте ставки!</div>
             </div>
-        </div>
-    </div>
+        </header>
 
-<!-- Рулетка -->
-<div class="roulette-container">
-    <div class="roulette-wheel-container">
-        <div class="roulette-wheel" id="roulette-wheel">
-            <!-- 15 секторов с номерами -->
-            <div class="sector red" data-number="1">1</div>
-            <div class="sector black" data-number="2">2</div>
-            <div class="sector red" data-number="3">3</div>
-            <div class="sector black" data-number="4">4</div>
-            <div class="sector green" data-number="0">0</div>
-            <div class="sector red" data-number="5">5</div>
-            <div class="sector black" data-number="6">6</div>
-            <div class="sector red" data-number="7">7</div>
-            <div class="sector black" data-number="8">8</div>
-            <div class="sector red" data-number="9">9</div>
-            <div class="sector black" data-number="10">10</div>
-            <div class="sector red" data-number="11">11</div>
-            <div class="sector black" data-number="12">12</div>
-            <div class="sector red" data-number="13">13</div>
-            <div class="sector black" data-number="14">14</div>
-        </div>
-        <div class="roulette-pointer"></div>
-    </div>
-</div>
-    
-    <!-- История выпадений -->
-    <div class="history-container">
-        <h3>История (последние 10)</h3>
-        <div class="history-items" id="history-items">
-            {% for item in history %}
-                <div class="history-item {{ item.result }}">
-                    <span class="history-color"></span>
+        <!-- Главный игровой контент -->
+        <main class="game-container">
+            <!-- Статус игры -->
+            <div class="game-status">
+                <div id="game-phase" class="game-phase betting">ВРЕМЯ СТАВОК</div>
+                <div id="timer" class="timer">25</div>
+            </div>
+
+            <!-- Рулетка -->
+            <div class="roulette-container">
+                <div class="roulette-wrapper">
+                    <div id="roulette-wheel" class="roulette-wheel">
+                        <!-- Секторы рулетки (15 секторов) -->
+                        <div class="sector red" data-number="1" style="transform: rotate(0deg)">1</div>
+                        <div class="sector black" data-number="2" style="transform: rotate(24deg)">2</div>
+                        <div class="sector red" data-number="3" style="transform: rotate(48deg)">3</div>
+                        <div class="sector black" data-number="4" style="transform: rotate(72deg)">4</div>
+                        <div class="sector green" data-number="0" style="transform: rotate(96deg)">0</div>
+                        <div class="sector red" data-number="5" style="transform: rotate(120deg)">5</div>
+                        <div class="sector black" data-number="6" style="transform: rotate(144deg)">6</div>
+                        <div class="sector red" data-number="7" style="transform: rotate(168deg)">7</div>
+                        <div class="sector black" data-number="8" style="transform: rotate(192deg)">8</div>
+                        <div class="sector red" data-number="9" style="transform: rotate(216deg)">9</div>
+                        <div class="sector black" data-number="10" style="transform: rotate(240deg)">10</div>
+                        <div class="sector red" data-number="11" style="transform: rotate(264deg)">11</div>
+                        <div class="sector black" data-number="12" style="transform: rotate(288deg)">12</div>
+                        <div class="sector red" data-number="13" style="transform: rotate(312deg)">13</div>
+                        <div class="sector black" data-number="14" style="transform: rotate(336deg)">14</div>
+                    </div>
+                    <div class="roulette-pointer"></div>
                 </div>
-            {% endfor %}
-        </div>
+            </div>
+
+            <!-- Отображение выигрышного номера -->
+            <div id="winning-number" class="winning-number" style="display: none;">
+                <span class="winning-label">Выпало:</span>
+                <span class="winning-value">0</span>
+            </div>
+
+            <!-- Панель ставок -->
+            <div class="betting-panel">
+                <div class="bet-amount-section">
+                    <h3>Сумма ставки</h3>
+                    <div class="bet-amount-display">
+                        <span id="bet-amount">100</span> 💰
+                    </div>
+                    <div class="bet-controls">
+                        <button class="bet-btn" data-type="min">МИН</button>
+                        <button class="bet-btn" data-type="half">1/2</button>
+                        <button class="bet-btn" data-type="double">x2</button>
+                        <button class="bet-btn" data-type="max">МАКС</button>
+                    </div>
+                </div>
+
+                <div class="betting-options">
+                    <h3>Выберите ставку</h3>
+                    <div class="color-bets">
+                        <button class="color-bet red" data-color="red">
+                            <span class="bet-name">КРАСНОЕ</span>
+                            <span class="bet-multiplier">x2</span>
+                        </button>
+                        <button class="color-bet black" data-color="black">
+                            <span class="bet-name">ЧЕРНОЕ</span>
+                            <span class="bet-multiplier">x2</span>
+                        </button>
+                        <button class="color-bet green" data-color="green">
+                            <span class="bet-name">ЗЕЛЕНОЕ</span>
+                            <span class="bet-multiplier">x14</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- История игр -->
+            <div class="history-section">
+                <h3>История</h3>
+                <div id="history-list" class="history-list">
+                    {% for game in history %}
+                    <div class="history-item {{ game.result }}">
+                        <span class="history-number">{{ game.number }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- Панель ставок -->
-    <div class="betting-panel">
-        <div class="bet-input-container">
-            <input type="number" id="bet-amount" placeholder="Сумма ставки" min="10" value="10">
-            <div class="bet-buttons">
-                <button class="bet-btn" onclick="setBetAmount('min')">MIN</button>
-                <button class="bet-btn" onclick="setBetAmount('half')">1/2</button>
-                <button class="bet-btn" onclick="setBetAmount('double')">2X</button>
-                <button class="bet-btn" onclick="setBetAmount('max')">MAX</button>
+    <!-- Модальные окна -->
+    <!-- Модальное окно выигрыша -->
+    <div id="win-modal" class="modal" style="display: none;">
+        <div class="modal-content win-modal">
+            <span class="close">&times;</span>
+            <div class="modal-body">
+                <h2>🎉 ПОЗДРАВЛЯЕМ! 🎉</h2>
+                <p id="win-text">Вы выиграли!</p>
+                <div class="confetti-container"></div>
             </div>
         </div>
+    </div>
 
-        <div class="color-buttons">
-            <button class="color-bet red" onclick="placeBet('red')">
-                <span class="bet-label">КРАСНОЕ</span>
-                <span class="multiplier">x2</span>
-            </button>
-            <button class="color-bet black" onclick="placeBet('black')">
-                <span class="bet-label">ЧЁРНОЕ</span>
-                <span class="multiplier">x2</span>
-            </button>
-            <button class="color-bet green" onclick="placeBet('green')">
-                <span class="bet-label">ЗЕЛЁНОЕ</span>
-                <span class="multiplier">x14</span>
-            </button>
+    <!-- Модальное окно проигрыша -->
+    <div id="lose-modal" class="modal" style="display: none;">
+        <div class="modal-content lose-modal">
+            <span class="close">&times;</span>
+            <div class="modal-body">
+                <h2>😔 НЕ ПОВЕЗЛО</h2>
+                <p id="lose-text">В этот раз не повезло!</p>
+                <p>Попробуйте еще раз!</p>
+            </div>
         </div>
     </div>
 
-    <!-- Ставки игроков -->
-    <div class="players-bets">
-        <h3>Ставки игроков</h3>
-        <div class="bets-container" id="bets-container">
-            <!-- Ставки будут добавляться динамически -->
-        </div>
-    </div>
-</div>
-
-<!-- Модальные окна -->
-<div class="modal" id="win-modal">
-    <div class="modal-content win">
-        <h2>🎉 ВЫИГРЫШ! 🎉</h2>
-        <p id="win-text"></p>
-        <button onclick="closeModal()" class="btn-close">Закрыть</button>
-    </div>
-</div>
-
-<div class="modal" id="lose-modal">
-    <div class="modal-content lose">
-        <h2>😔 Не повезло</h2>
-        <p id="lose-text"></p>
-        <button onclick="closeModal()" class="btn-close">Закрыть</button>
-    </div>
-</div>
-{% endblock %}
+    <!-- Скрипты -->
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script>
+        // Отладочная информация
+        setInterval(() => {
+            const game = window.rouletteGame;
+            if (game) {
+                document.getElementById('connection-status').textContent = game.isConnected ? 'Подключен' : 'Отключен';
+                document.getElementById('debug-phase').textContent = document.getElementById('game-phase')?.textContent || '-';
+                document.getElementById('debug-time').textContent = document.getElementById('timer')?.textContent || '-';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
