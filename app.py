@@ -239,6 +239,11 @@ def place_bet():
     if game_state['phase'] != 'betting':
         return jsonify({'error': 'Ставки не принимаются'}), 400
     
+    # Проверка на существующую ставку
+    user_key = f"user_{session['user_id']}"
+    if user_key in game_state['current_bets']:
+        return jsonify({'error': 'Вы уже сделали ставку в этом раунде'}), 400
+    
     conn = get_db_connection()
     user = conn.execute('SELECT balance FROM users WHERE id = ?', (session['user_id'],)).fetchone()
     
@@ -253,7 +258,6 @@ def place_bet():
     conn.close()
     
     # Добавляем ставку в текущую игру
-    user_key = f"user_{session['user_id']}"
     game_state['current_bets'][user_key] = {
         'user_id': session['user_id'],
         'username': session['username'],
@@ -269,7 +273,6 @@ def place_bet():
     })
     
     return jsonify({'success': True})
-
 @socketio.on('connect')
 def handle_connect():
     try:
