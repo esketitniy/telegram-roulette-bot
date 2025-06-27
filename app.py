@@ -41,15 +41,10 @@ game_state = {
 
 # Конфигурация рулетки
 ROULETTE_CONFIG = {
-    'red_count': 7,
-    'black_count': 7,
-    'green_count': 1,
-    'red_multiplier': 2,
-    'black_multiplier': 2,
-    'green_multiplier': 14,
+    'betting_time': 25,     # 25 секунд на ставки
+    'spinning_time': 10,    # 10 секунд анимация вращения
     'min_bet': 10,
-    'betting_time': 25,
-    'spinning_time': 10
+    'multipliers': {'red': 2, 'black': 2, 'green': 14}
 }
 
 def init_db():
