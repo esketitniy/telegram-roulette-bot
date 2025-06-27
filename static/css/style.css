@@ -1034,3 +1034,43 @@ body {
     opacity: 0;
     visibility: hidden;
 }
+
+/* Кнопки ставок */
+.bet-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+}
+
+.bet-btn:hover:not(:disabled) {
+    background: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.bet-btn:disabled {
+    background: rgba(255, 255, 255, 0.5);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.bet-btn:active {
+    transform: translateY(0);
+}
+
+/* Поле для ввода суммы */
+#custom-amount {
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto;
+    display: block;
+}
