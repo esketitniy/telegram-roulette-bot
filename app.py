@@ -38,7 +38,7 @@ socketio = SocketIO(
     engineio_logger=True
 )
 
-# Глобальные переменные
+# Глобальные переменные (объявляем в начале)
 current_round = None
 game_state = {
     'status': 'waiting',
@@ -321,13 +321,12 @@ def process_bets(winning_number, winning_color):
         
         db.session.commit()
         print("Ставки обработаны успешно")
-        
-    except Exception as e:
+        except Exception as e:
         db.session.rollback()
         print(f'Ошибка обработки ставок: {e}')
 
 def game_loop():
-    global current_round, game_state, game_started
+    global current_round, game_state
     
     print("🎰 Игровой цикл запущен!")
     
@@ -425,10 +424,20 @@ def game_loop():
                 print(f'❌ Ошибка в игровом цикле: {e}')
                 time.sleep(5)
 
-# Инициализация при запуске
-def initialize_app():
+def start_game_loop():
+    """Функция для запуска игрового цикла"""
     global game_started, game_thread
     
+    if not game_started:
+        print("🚀 Запуск игрового цикла...")
+        game_started = True
+        game_thread = threading.Thread(target=game_loop, daemon=True)
+        game_thread.start()
+        return True
+    return False
+
+# Инициализация при запуске
+def initialize_app():
     with app.app_context():
         try:
             print("🗃️ Инициализация базы данных...")
@@ -446,12 +455,7 @@ def initialize_app():
             # Автозапуск игры через 3 секунды
             def delayed_start():
                 time.sleep(3)
-                if not game_started:
-                    print("🚀 Автозапуск игрового цикла...")
-                    global game_started, game_thread
-                    game_started = True
-                    game_thread = threading.Thread(target=game_loop, daemon=True)
-                    game_thread.start()
+                start_game_loop()
             
             start_thread = threading.Thread(target=delayed_start, daemon=True)
             start_thread.start()
@@ -476,4 +480,4 @@ if __name__ == '__main__':
         host='0.0.0.0', 
         port=port,
         allow_unsafe_werkzeug=True
-    )
+            )
