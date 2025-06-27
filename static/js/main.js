@@ -28,14 +28,17 @@ function initializeSocket() {
     });
     
     socket.on('game_state', function(data) {
+        console.log('Game state received:', data);
         updateGameState(data);
     });
     
     socket.on('betting_time', function(data) {
+        console.log('Betting time:', data.time_left);
         updateTimer(data.time_left);
     });
     
     socket.on('game_result', function(data) {
+        console.log('Game result:', data);
         showGameResult(data);
     });
     
@@ -44,10 +47,12 @@ function initializeSocket() {
     });
     
     socket.on('bet_placed', function(data) {
+        console.log('Bet placed:', data);
         updateUserBets(data);
     });
     
     socket.on('bet_error', function(data) {
+        console.log('Bet error:', data);
         showError(data.message);
     });
 }
@@ -86,15 +91,14 @@ function initializeBetting() {
         });
     }
     
-    // Обработчики ставок
-    const betOptions = document.querySelectorAll('.bet-option');
-    betOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            if (gameState !== 'betting' || this.classList.contains('disabled')) {
+    // Обработчики ставок через кнопки BET
+    const betButtons = document.querySelectorAll('.bet-btn');
+    betButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const betType = this.dataset.bet;
+            if (gameState !== 'betting' || this.disabled) {
                 return;
             }
-            
-            const betType = this.dataset.bet;
             placeBet(betType, currentBetAmount);
         });
     });
@@ -107,17 +111,19 @@ function placeBet(type, amount) {
         return;
     }
     
+    console.log('Placing bet:', type, amount);
+    
     socket.emit('place_bet', {
         type: type,
         amount: amount
     });
     
     // Добавляем визуальную обратную связь
-    const betOption = document.querySelector(`[data-bet="${type}"]`);
-    if (betOption) {
-        betOption.style.transform = 'scale(0.95)';
+    const betButton = document.querySelector(`[data-bet="${type}"].bet-btn`);
+    if (betButton) {
+        betButton.style.transform = 'scale(0.95)';
         setTimeout(() => {
-            betOption.style.transform = '';
+            betButton.style.transform = '';
         }, 150);
     }
 }
@@ -125,17 +131,19 @@ function placeBet(type, amount) {
 // Обновление состояния игры
 function updateGameState(data) {
     gameState = data.state;
+    console.log('Game state updated to:', gameState);
     
     const statusElement = document.getElementById('game-status');
-    const betOptions = document.querySelectorAll('.bet-option');
+    const betButtons = document.querySelectorAll('.bet-btn');
     
     switch (data.state) {
         case 'betting':
             if (statusElement) {
                 statusElement.querySelector('.status-text').textContent = 'Делайте ваши ставки!';
             }
-            betOptions.forEach(option => {
-                option.classList.remove('disabled');
+            betButtons.forEach(button => {
+                button.disabled = false;
+                button.textContent = 'BET';
             });
             resetBets();
             break;
@@ -144,10 +152,13 @@ function updateGameState(data) {
             if (statusElement) {
                 statusElement.querySelector('.status-text').textContent = 'Вращение рулетки...';
             }
-            betOptions.forEach(option => {
-                option.classList.add('disabled');
+            betButtons.forEach(button => {
+                button.disabled = true;
+                button.textContent = 'WAIT';
             });
-            spinWheel(data.winning_number);
+            if (data.winning_number !== undefined) {
+                spinWheel(data.winning_number);
+            }
             break;
     }
 }
@@ -163,40 +174,56 @@ function updateTimer(timeLeft) {
     
     if (timerCircle) {
         const percentage = (timeLeft / 25) * 360;
-        timerCircle.style.background = `conic-gradient(#ff6b6b ${percentage}deg, transparent ${percentage}deg)`;
         
         // Изменяем цвет в зависимости от оставшегося времени
+        let color = '#2ecc71'; // зеленый
         if (timeLeft <= 5) {
-            timerCircle.style.background = `conic-gradient(#e74c3c ${percentage}deg, transparent ${percentage}deg)`;
+            color = '#e74c3c'; // красный
         } else if (timeLeft <= 10) {
-            timerCircle.style.background = `conic-gradient(#f39c12 ${percentage}deg, transparent ${percentage}deg)`;
+            color = '#f39c12'; // оранжевый
         }
+        
+        timerCircle.style.background = `conic-gradient(${color} ${percentage}deg, transparent ${percentage}deg)`;
     }
 }
 
 // Вращение рулетки
 function spinWheel(winningNumber) {
     const wheel = document.querySelector('.wheel-inner');
-    if (!wheel) return;
+    if (!wheel) {
+        console.log('Wheel element not found');
+        return;
+    }
     
-    // Вычисляем угол для выигрышного числа
-    const segmentAngle = 360 / 37;
-    const targetAngle = segmentAngle * winningNumber;
+    console.log('Spinning wheel to number:', winningNumber);
     
-    // Добавляем несколько полных оборотов для эффекта
-    const fullRotations = 5;
-    const finalAngle = fullRotations * 360 + (360 - targetAngle);
+    // Сбрасываем предыдущие повороты
+    wheel.style.transition = 'none';
+    wheel.style.transform = 'rotate(0deg)';
     
-    // Применяем анимацию
-    wheel.style.transform = `rotate(${finalAngle}deg)`;
-    
-    // Звуковой эффект (если добавите аудио)
-    playSpinSound();
+    // Небольшая задержка для применения сброса
+    setTimeout(() => {
+        // Вычисляем угол для выигрышного числа
+        const segmentAngle = 360 / 37;
+        const targetAngle = segmentAngle * winningNumber;
+        
+        // Добавляем несколько полных оборотов для эффекта
+        const fullRotations = 5;
+        const finalAngle = fullRotations * 360 + (360 - targetAngle);
+        
+        // Применяем анимацию
+        wheel.style.transition = 'transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)';
+        wheel.style.transform = `rotate(${finalAngle}deg)`;
+        
+        console.log('Wheel spinning to angle:', finalAngle);
+    }, 100);
 }
 
 // Показ результата игры
 function showGameResult(data) {
     const { winning_number, winning_color } = data;
+    
+    console.log('Showing game result:', winning_number, winning_color);
     
     // Обновляем статус
     const statusElement = document.getElementById('game-status');
@@ -207,9 +234,6 @@ function showGameResult(data) {
     
     // Проверяем выигрыши пользователя
     checkUserWins(winning_color);
-    
-    // Добавляем число в историю
-    addToHistory(winning_number, winning_color);
     
     setTimeout(() => {
         gameState = 'betting';
@@ -227,23 +251,12 @@ function checkUserWins(winningColor) {
             const winAmount = userBets[betType] * multiplier;
             totalWin += winAmount;
             hasWin = true;
-            
-            // Анимация выигрышной ставки
-            const betOption = document.querySelector(`[data-bet="${betType}"]`);
-            if (betOption) {
-                betOption.classList.add('winning');
-                setTimeout(() => {
-                    betOption.classList.remove('winning');
-                }, 3000);
-            }
         }
     });
     
     if (hasWin) {
         showWinAnimation(totalWin);
         updateBalance(totalWin);
-    } else {
-        showLoseAnimation();
     }
 }
 
@@ -266,66 +279,9 @@ function showWinAnimation(amount) {
         winAmountElement.textContent = `+${amount.toFixed(2)}₽`;
         winOverlay.classList.add('show');
         
-        // Запуск конфетти
-        startConfetti();
-        
-        // Звук выигрыша
-        playWinSound();
-        
         setTimeout(() => {
             winOverlay.classList.remove('show');
-            stopConfetti();
         }, 3000);
-    }
-}
-
-// Анимация проигрыша
-function showLoseAnimation() {
-    // Можно добавить анимацию проигрыша
-    const betOptions = document.querySelectorAll('.bet-option');
-    betOptions.forEach(option => {
-        if (userBets[option.dataset.bet] > 0) {
-            option.classList.add('losing');
-            setTimeout(() => {
-                option.classList.remove('losing');
-            }, 1000);
-        }
-    });
-    
-    playLoseSound();
-}
-
-// Запуск эффекта конфетти
-function startConfetti() {
-    const confetti = document.getElementById('confetti');
-    if (!confetti) return;
-    
-    const colors = ['#ffd700', '#ff6b6b', '#2ecc71', '#3498db', '#9b59b6'];
-    const confettiCount = 50;
-    
-    for (let i = 0; i < confettiCount; i++) {
-        setTimeout(() => {
-            const piece = document.createElement('div');
-            piece.className = 'confetti-piece';
-            piece.style.left = Math.random() * 100 + '%';
-            piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            piece.style.animationDelay = Math.random() * 2 + 's';
-            confetti.appendChild(piece);
-            
-            setTimeout(() => {
-                if (piece.parentNode) {
-                    piece.parentNode.removeChild(piece);
-                }
-            }, 3000);
-        }, i * 50);
-    }
-}
-
-// Остановка конфетти
-function stopConfetti() {
-    const confetti = document.getElementById('confetti');
-    if (confetti) {
-        confetti.innerHTML = '';
     }
 }
 
@@ -366,32 +322,12 @@ function updateHistory(history) {
     
     historyContainer.innerHTML = '';
     
-    history.forEach((result, index) => {
+    history.forEach(result => {
         const numberElement = document.createElement('div');
         numberElement.className = `history-number ${result.color}`;
         numberElement.textContent = result.number;
-        numberElement.style.animationDelay = `${index * 0.1}s`;
         historyContainer.appendChild(numberElement);
     });
-}
-
-// Добавление в историю
-function addToHistory(number, color) {
-    const historyContainer = document.getElementById('history-numbers');
-    if (!historyContainer) return;
-    
-    // Создаем новый элемент
-    const numberElement = document.createElement('div');
-    numberElement.className = `history-number ${color}`;
-    numberElement.textContent = number;
-    
-    // Добавляем в начало
-    historyContainer.insertBefore(numberElement, historyContainer.firstChild);
-    
-    // Удаляем лишние элементы (оставляем только 10)
-    while (historyContainer.children.length > 10) {
-        historyContainer.removeChild(historyContainer.lastChild);
-    }
 }
 
 // Обновление баланса
@@ -401,17 +337,13 @@ function updateBalance(amount) {
         const currentBalance = parseFloat(balanceElement.textContent);
         const newBalance = currentBalance + amount;
         balanceElement.textContent = newBalance.toFixed(2);
-        
-        // Анимация изменения баланса
-        balanceElement.style.color = '#2ecc71';
-        setTimeout(() => {
-            balanceElement.style.color = '';
-        }, 1000);
     }
 }
 
 // Показ ошибки
 function showError(message) {
+    console.error('Error:', message);
+    
     // Создаем элемент ошибки
     const errorElement = document.createElement('div');
     errorElement.className = 'error-message';
@@ -435,29 +367,21 @@ function showError(message) {
     
     // Удаляем через 3 секунды
     setTimeout(() => {
-        errorElement.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            if (errorElement.parentNode) {
-                errorElement.parentNode.removeChild(errorElement);
-            }
-        }, 300);
+        if (errorElement.parentNode) {
+            errorElement.parentNode.removeChild(errorElement);
+        }
     }, 3000);
 }
 
-// Звуковые эффекты (заглушки - можно добавить реальные аудио файлы)
-function playSpinSound() {
-    // Здесь можно добавить воспроизведение звука вращения
-    console.log('Playing spin sound');
-}
-
-function playWinSound() {
-    // Здесь можно добавить воспроизведение звука выигрыша
-    console.log('Playing win sound');
-}
-
-function playLoseSound() {
-    // Здесь можно добавить воспроизведение звука проигрыша
-    console.log('Playing lose sound');
+// Установка обработчиков событий
+function setupEventListeners() {
+    // Обработка кликов вне модальных окон
+    document.addEventListener('click', function(e) {
+        const winOverlay = document.getElementById('win-overlay');
+        if (winOverlay && e.target === winOverlay) {
+            winOverlay.classList.remove('show');
+        }
+    });
 }
 
 // Дополнительные анимации CSS
@@ -471,39 +395,6 @@ const additionalStyles = `
         transform: translateX(0);
         opacity: 1;
     }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.bet-option.winning {
-    animation: winningPulse 0.5s ease-in-out 3;
-    border-color: #ffd700 !important;
-    box-shadow: 0 0 30px #ffd700 !important;
-}
-
-.bet-option.losing {
-    animation: losingShake 0.5s ease-in-out;
-    filter: grayscale(0.5);
-}
-
-@keyframes winningPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-
-@keyframes losingShake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-    20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
 .winning-number {
@@ -538,338 +429,3 @@ const additionalStyles = `
 const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
-
-// Обработка видимости страницы (для паузы при неактивной вкладке)
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden) {
-        // Страница скрыта
-        console.log('Page hidden');
-    } else {
-        // Страница активна
-        console.log('Page visible');
-        if (socket && !socket.connected) {
-            socket.connect();
-        }
-    }
-});
-
-// Обработка потери соединения
-function handleConnectionLoss() {
-    showError('Соединение потеряно. Переподключение...');
-    
-    // Пытаемся переподключиться
-    setTimeout(() => {
-        if (socket) {
-            socket.connect();
-        }
-    }, 2000);
-}
-
-// Обработка восстановления соединения
-function handleReconnection() {
-    const successElement = document.createElement('div');
-    successElement.className = 'success-message';
-    successElement.innerHTML = `<i class="fas fa-check-circle"></i> Соединение восстановлено`;
-    
-    successElement.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #2ecc71;
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
-        z-index: 10000;
-        animation: slideInRight 0.3s ease;
-    `;
-    
-    document.body.appendChild(successElement);
-    
-    setTimeout(() => {
-        successElement.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            if (successElement.parentNode) {
-                successElement.parentNode.removeChild(successElement);
-            }
-        }, 300);
-    }, 2000);
-}
-
-// Дополнительные обработчики событий WebSocket
-function setupSocketListeners() {
-    if (!socket) return;
-    
-    socket.on('connect_error', handleConnectionLoss);
-    socket.on('disconnect', handleConnectionLoss);
-    socket.on('reconnect', handleReconnection);
-}
-
-// Установка обработчиков событий
-function setupEventListeners() {
-    // Обработка кликов вне модальных окон
-    document.addEventListener('click', function(e) {
-        const winOverlay = document.getElementById('win-overlay');
-        if (winOverlay && e.target === winOverlay) {
-            winOverlay.classList.remove('show');
-            stopConfetti();
-        }
-    });
-    
-    // Обработка клавиш
-    document.addEventListener('keydown', function(e) {
-        // ESC для закрытия модальных окон
-        if (e.key === 'Escape') {
-            const winOverlay = document.getElementById('win-overlay');
-            if (winOverlay && winOverlay.classList.contains('show')) {
-                winOverlay.classList.remove('show');
-                stopConfetti();
-            }
-        }
-        
-        // Горячие клавиши для ставок (только в режиме ставок)
-        if (gameState === 'betting') {
-            switch(e.key) {
-                case '1':
-                    placeBet('red', currentBetAmount);
-                    break;
-                case '2':
-                    placeBet('black', currentBetAmount);
-                    break;
-                case '3':
-                    placeBet('green', currentBetAmount);
-                    break;
-            }
-        }
-    });
-    
-    // Обработка свайпов для мобильных устройств
-    let touchStartX = 0;
-    let touchStartY = 0;
-    
-    document.addEventListener('touchstart', function(e) {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-    });
-    
-    document.addEventListener('touchend', function(e) {
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-        
-        const deltaX = touchEndX - touchStartX;
-        const deltaY = touchEndY - touchStartY;
-        
-        // Проверяем, что это горизонтальный свайп
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-            // Свайп влево/вправо по истории
-            const historyContainer = document.getElementById('history-numbers');
-            if (historyContainer && historyContainer.contains(e.target)) {
-                if (deltaX > 0) {
-                    // Свайп вправо - можно добавить функционал
-                    console.log('Swipe right on history');
-                } else {
-                    // Свайп влево - можно добавить функционал
-                    console.log('Swipe left on history');
-                }
-            }
-        }
-    });
-}
-
-// Функция для обновления UI при изменении размера экрана
-function handleResize() {
-    const isMobile = window.innerWidth <= 768;
-    
-    // Адаптация рулетки под размер экрана
-    const rouletteWheel = document.querySelector('.roulette-wheel');
-    if (rouletteWheel) {
-        if (isMobile) {
-            rouletteWheel.style.width = '200px';
-            rouletteWheel.style.height = '200px';
-        } else {
-            rouletteWheel.style.width = '300px';
-            rouletteWheel.style.height = '300px';
-        }
-    }
-    
-    // Адаптация таймера
-    const timerCircle = document.querySelector('.timer-circle');
-    if (timerCircle) {
-        if (isMobile) {
-            timerCircle.style.width = '60px';
-            timerCircle.style.height = '60px';
-        } else {
-            timerCircle.style.width = '80px';
-            timerCircle.style.height = '80px';
-        }
-    }
-}
-
-// Добавляем обработчик изменения размера окна
-window.addEventListener('resize', handleResize);
-
-// Функция для сохранения состояния в localStorage
-function saveGameState() {
-    const gameData = {
-        currentBetAmount: currentBetAmount,
-        userBets: userBets,
-        timestamp: Date.now()
-    };
-    
-    localStorage.setItem('rouletteGameState', JSON.stringify(gameData));
-}
-
-// Функция для восстановления состояния из localStorage
-function restoreGameState() {
-    const savedData = localStorage.getItem('rouletteGameState');
-    if (savedData) {
-        try {
-            const gameData = JSON.parse(savedData);
-            
-            // Проверяем, что данные не слишком старые (максимум 1 час)
-            if (Date.now() - gameData.timestamp < 3600000) {
-                currentBetAmount = gameData.currentBetAmount || 10;
-                
-                // Обновляем активную кнопку суммы
-                const amountButtons = document.querySelectorAll('.amount-btn');
-                amountButtons.forEach(btn => {
-                    btn.classList.toggle('active', 
-                        parseInt(btn.dataset.amount) === currentBetAmount);
-                });
-            }
-        } catch (error) {
-            console.error('Error restoring game state:', error);
-        }
-    }
-}
-
-// Сохраняем состояние при изменениях
-function setupStateSaving() {
-    // Сохраняем при изменении суммы ставки
-    const amountButtons = document.querySelectorAll('.amount-btn');
-    amountButtons.forEach(btn => {
-        btn.addEventListener('click', saveGameState);
-    });
-    
-    const customAmountInput = document.getElementById('custom-amount');
-    if (customAmountInput) {
-        customAmountInput.addEventListener('input', saveGameState);
-    }
-    
-    // Сохраняем при размещении ставок
-    window.addEventListener('beforeunload', saveGameState);
-}
-
-// Инициализация дополнительных функций
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof userId !== 'undefined') {
-        restoreGameState();
-        setupStateSaving();
-        handleResize();
-    }
-});
-
-// Функция для показа подсказок для новых пользователей
-function showTutorial() {
-    const isFirstVisit = !localStorage.getItem('rouletteTutorialShown');
-    
-    if (isFirstVisit) {
-        const tutorialSteps = [
-            {
-                element: '.bet-amount-selector',
-                text: 'Выберите сумму ставки'
-            },
-            {
-                element: '.betting-options',
-                text: 'Нажмите на цвет для размещения ставки'
-            },
-            {
-                element: '.timer-circle',
-                text: 'Следите за таймером - у вас есть 25 секунд на ставки'
-            },
-            {
-                element: '.history-numbers',
-                text: 'Здесь отображаются последние результаты'
-            }
-        ];
-        
-        showTutorialStep(tutorialSteps, 0);
-        localStorage.setItem('rouletteTutorialShown', 'true');
-    }
-}
-
-function showTutorialStep(steps, currentStep) {
-    if (currentStep >= steps.length) return;
-    
-    const step = steps[currentStep];
-    const element = document.querySelector(step.element);
-    
-    if (!element) {
-        showTutorialStep(steps, currentStep + 1);
-        return;
-    }
-    
-    const tooltip = document.createElement('div');
-    tooltip.className = 'tutorial-tooltip';
-    tooltip.innerHTML = `
-        <div class="tooltip-content">
-            <p>${step.text}</p>
-            <div class="tooltip-controls">
-                <button onclick="closeTutorial()">Пропустить</button>
-                <button onclick="nextTutorialStep(${currentStep + 1})">
-                    ${currentStep < steps.length - 1 ? 'Далее' : 'Понятно'}
-                </button>
-            </div>
-        </div>
-        <div class="tooltip-arrow"></div>
-    `;
-    
-    // Позиционируем подсказку
-    const rect = element.getBoundingClientRect();
-    tooltip.style.cssText = `
-        position: fixed;
-        top: ${rect.bottom + 10}px;
-        left: ${rect.left + rect.width / 2}px;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        z-index: 10001;
-        max-width: 300px;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    document.body.appendChild(tooltip);
-    
-    // Подсвечиваем элемент
-    element.style.boxShadow = '0 0 20px #ffd700';
-    element.style.position = 'relative';
-    element.style.zIndex = '10000';
-    
-    window.currentTutorialTooltip = tooltip;
-    window.currentTutorialElement = element;
-    window.tutorialSteps = steps;
-}
-
-function nextTutorialStep(step) {
-    closeTutorialTooltip();
-    showTutorialStep(window.tutorialSteps, step);
-}
-
-function closeTutorial() {
-    closeTutorialTooltip();
-}
-
-function closeTutorialTooltip() {
-    if (window.currentTutorialTooltip) {
-        window.currentTutorialTooltip.remove();
-    }
-    if (window.currentTutorialElement) {
-        window.currentTutorialElement.style.boxShadow = '';
-        window.currentTutorialElement.style.zIndex = '';
-    }
-}
-
-// Показываем туториал для новых пользователей
-setTimeout(showTutorial, 2000);
