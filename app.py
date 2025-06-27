@@ -252,7 +252,7 @@ def place_bet():
     }
     
     # Отправляем обновление всем игрокам
-    socketio.emit('bet_placed', {
+    safe_emit('bet_placed', {
         'username': session['username'],
         'bet_type': bet_type,
         'amount': amount
@@ -262,22 +262,28 @@ def place_bet():
 
 @socketio.on('connect')
 def handle_connect():
-    if 'user_id' in session:
-        game_state['active_players'].add(session['username'])
-        join_room('game')
-        emit('game_state', {
-            'phase': game_state['phase'],
-            'time_left': game_state['time_left'],
-            'current_bets': list(game_state['current_bets'].values()),
-            'history': game_state['history'][-10:]
-        })
+    try:
+        if 'user_id' in session:
+            game_state['active_players'].add(session['username'])
+            join_room('game')
+            emit('game_state', {
+                'phase': game_state['phase'],
+                'time_left': game_state['time_left'],
+                'current_bets': list(game_state['current_bets'].values()),
+                'history': game_state['history'][-10:]
+            })
+    except Exception as e:
+        print(f"Ошибка подключения: {e}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    if 'username' in session:
-        game_state['active_players'].discard(session['username'])
-        leave_room('game')
-
+    try:
+        if 'username' in session:
+            game_state['active_players'].discard(session['username'])
+            leave_room('game')
+    except Exception as e:
+        print(f"Ошибка отключения: {e}")
+        
 def game_loop():
     """Основной игровой цикл"""
     while True:
@@ -286,34 +292,34 @@ def game_loop():
         game_state['time_left'] = ROULETTE_CONFIG['betting_time']
         game_state['hash'] = generate_game_hash()
         
-        socketio.emit('phase_change', {
-            'phase': 'betting',
+        safe_emit('phase_change', {
+            'phase': 'spinning',
             'time_left': game_state['time_left'],
-            'hash': game_state['hash']
+            'result': game_state['result']
         })
         
         # Отсчет времени для ставок
         for i in range(ROULETTE_CONFIG['betting_time']):
             time.sleep(1)
             game_state['time_left'] -= 1
-            socketio.emit('time_update', {'time_left': game_state['time_left']})
+            safe_emit('time_update', {'time_left': game_state['time_left']})
         
         # Фаза вращения
         game_state['phase'] = 'spinning'
         game_state['time_left'] = ROULETTE_CONFIG['spinning_time']
         game_state['result'] = spin_roulette()
         
-        socketio.emit('phase_change', {
-            'phase': 'spinning',
+        safe_emit('phase_change', {
+            'phase': 'betting',
             'time_left': game_state['time_left'],
-            'result': game_state['result']
+            'hash': game_state['hash']
         })
         
         # Отсчет времени вращения
         for i in range(ROULETTE_CONFIG['spinning_time']):
             time.sleep(1)
             game_state['time_left'] -= 1
-            socketio.emit('time_update', {'time_left': game_state['time_left']})
+            safe_emit('time_update', {'time_left': game_state['time_left']})
         
         # Обработка результатов
         process_results()
@@ -372,7 +378,7 @@ def process_results():
     })
     
     # Отправляем результаты
-    socketio.emit('game_result', {
+    safe_emit('game_result', {
         'result': result,
         'winners': winners,
         'history': game_state['history'][-10:]
