@@ -9,7 +9,7 @@
 </head>
 <body>
     <!-- Отладочная информация -->
-    <div id="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999;">
+    <div id="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999; border-radius: 5px;">
         <div>Статус: <span id="connection-status">Подключение...</span></div>
         <div>Фаза: <span id="debug-phase">-</span></div>
         <div>Время: <span id="debug-time">-</span></div>
@@ -41,23 +41,54 @@
             <!-- Рулетка -->
             <div class="roulette-container">
                 <div class="roulette-wrapper">
+                    <!-- Рулетка с правильным ID -->
                     <div id="roulette-wheel" class="roulette-wheel">
                         <!-- Секторы рулетки (15 секторов) -->
-                        <div class="sector red" data-number="1" style="transform: rotate(0deg)">1</div>
-                        <div class="sector black" data-number="2" style="transform: rotate(24deg)">2</div>
-                        <div class="sector red" data-number="3" style="transform: rotate(48deg)">3</div>
-                        <div class="sector black" data-number="4" style="transform: rotate(72deg)">4</div>
-                        <div class="sector green" data-number="0" style="transform: rotate(96deg)">0</div>
-                        <div class="sector red" data-number="5" style="transform: rotate(120deg)">5</div>
-                        <div class="sector black" data-number="6" style="transform: rotate(144deg)">6</div>
-                        <div class="sector red" data-number="7" style="transform: rotate(168deg)">7</div>
-                        <div class="sector black" data-number="8" style="transform: rotate(192deg)">8</div>
-                        <div class="sector red" data-number="9" style="transform: rotate(216deg)">9</div>
-                        <div class="sector black" data-number="10" style="transform: rotate(240deg)">10</div>
-                        <div class="sector red" data-number="11" style="transform: rotate(264deg)">11</div>
-                        <div class="sector black" data-number="12" style="transform: rotate(288deg)">12</div>
-                        <div class="sector red" data-number="13" style="transform: rotate(312deg)">13</div>
-                        <div class="sector black" data-number="14" style="transform: rotate(336deg)">14</div>
+                        <div class="sector red" data-number="1" style="transform: rotate(0deg)">
+                            <span class="sector-number">1</span>
+                        </div>
+                        <div class="sector black" data-number="2" style="transform: rotate(24deg)">
+                            <span class="sector-number">2</span>
+                        </div>
+                        <div class="sector red" data-number="3" style="transform: rotate(48deg)">
+                            <span class="sector-number">3</span>
+                        </div>
+                        <div class="sector black" data-number="4" style="transform: rotate(72deg)">
+                            <span class="sector-number">4</span>
+                        </div>
+                        <div class="sector green" data-number="0" style="transform: rotate(96deg)">
+                            <span class="sector-number">0</span>
+                        </div>
+                        <div class="sector red" data-number="5" style="transform: rotate(120deg)">
+                            <span class="sector-number">5</span>
+                        </div>
+                        <div class="sector black" data-number="6" style="transform: rotate(144deg)">
+                            <span class="sector-number">6</span>
+                        </div>
+                        <div class="sector red" data-number="7" style="transform: rotate(168deg)">
+                            <span class="sector-number">7</span>
+                        </div>
+                        <div class="sector black" data-number="8" style="transform: rotate(192deg)">
+                            <span class="sector-number">8</span>
+                        </div>
+                        <div class="sector red" data-number="9" style="transform: rotate(216deg)">
+                            <span class="sector-number">9</span>
+                        </div>
+                        <div class="sector black" data-number="10" style="transform: rotate(240deg)">
+                            <span class="sector-number">10</span>
+                        </div>
+                        <div class="sector red" data-number="11" style="transform: rotate(264deg)">
+                            <span class="sector-number">11</span>
+                        </div>
+                        <div class="sector black" data-number="12" style="transform: rotate(288deg)">
+                            <span class="sector-number">12</span>
+                        </div>
+                        <div class="sector red" data-number="13" style="transform: rotate(312deg)">
+                            <span class="sector-number">13</span>
+                        </div>
+                        <div class="sector black" data-number="14" style="transform: rotate(336deg)">
+                            <span class="sector-number">14</span>
+                        </div>
                     </div>
                     <div class="roulette-pointer"></div>
                 </div>
@@ -66,7 +97,7 @@
             <!-- Отображение выигрышного номера -->
             <div id="winning-number" class="winning-number" style="display: none;">
                 <span class="winning-label">Выпало:</span>
-                <span class="winning-value">0</span>
+                <span id="winning-value" class="winning-value">0</span>
             </div>
 
             <!-- Панель ставок -->
@@ -77,7 +108,7 @@
                         <span id="bet-amount">100</span> 💰
                     </div>
                     <div class="bet-controls">
-                        <button class="bet-btn" data-type="min">МИН</button>
+                        <button class="bet-btn" data-type="min">МИН (10)</button>
                         <button class="bet-btn" data-type="half">1/2</button>
                         <button class="bet-btn" data-type="double">x2</button>
                         <button class="bet-btn" data-type="max">МАКС</button>
@@ -105,13 +136,25 @@
 
             <!-- История игр -->
             <div class="history-section">
-                <h3>История</h3>
+                <h3>История последних игр</h3>
                 <div id="history-list" class="history-list">
-                    {% for game in history %}
-                    <div class="history-item {{ game.result }}">
-                        <span class="history-number">{{ game.number }}</span>
-                    </div>
-                    {% endfor %}
+                    {% if history %}
+                        {% for game in history %}
+                        <div class="history-item {{ game.result }}">
+                            <span class="history-number">{{ game.number }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-history">История пуста</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Текущие ставки -->
+            <div class="current-bets-section">
+                <h3>Текущие ставки</h3>
+                <div id="current-bets" class="current-bets">
+                    <p>Ставок пока нет</p>
                 </div>
             </div>
         </main>
@@ -137,23 +180,74 @@
             <div class="modal-body">
                 <h2>😔 НЕ ПОВЕЗЛО</h2>
                 <p id="lose-text">В этот раз не повезло!</p>
-                <p>Попробуйте еще раз!</p>
+                <p>Удачи в следующий раз!</p>
             </div>
         </div>
     </div>
 
     <!-- Скрипты -->
-    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
     <script>
+        // Проверяем все необходимые элементы ДО загрузки игры
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 Проверка элементов...');
+            
+            const requiredElements = [
+                'balance', 'bet-amount', 'game-phase', 'timer', 'roulette-wheel'
+            ];
+            
+            const missingElements = [];
+            requiredElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    missingElements.push(id);
+                    console.error('❌ Элемент не найден:', id);
+                } else {
+                    console.log('✅ Элемент найден:', id);
+                }
+            });
+
+            // Проверяем кнопки ставок
+            const colorBets = document.querySelectorAll('.color-bet');
+            console.log('🎯 Найдено кнопок ставок:', colorBets.length);
+            colorBets.forEach((btn, index) => {
+                console.log(`Кнопка ${index + 1}:`, btn.dataset.color);
+            });
+
+            if (missingElements.length > 0) {
+                console.error('❌ Отсутствуют элементы:', missingElements);
+                alert('Ошибка инициализации: ' + missingElements.join(', '));
+                return;
+            }
+
+            if (colorBets.length === 0) {
+                console.error('❌ Кнопки ставок не найдены');
+                alert('Ошибка: кнопки ставок не найдены');
+                return;
+            }
+
+            console.log('✅ Все элементы найдены, загружаем игру...');
+        });
+
         // Отладочная информация
         setInterval(() => {
             const game = window.rouletteGame;
             if (game) {
-                document.getElementById('connection-status').textContent = game.isConnected ? 'Подключен' : 'Отключен';
-                document.getElementById('debug-phase').textContent = document.getElementById('game-phase')?.textContent || '-';
-                document.getElementById('debug-time').textContent = document.getElementById('timer')?.textContent || '-';
+                document.getElementById('connection-status').textContent = 
+                    game.isConnected ? 'Подключен ✅' : 'Отключен ❌';
+                document.getElementById('debug-phase').textContent = 
+                    document.getElementById('game-phase')?.textContent || '-';
+                document.getElementById('debug-time').textContent = 
+                    document.getElementById('timer')?.textContent || '-';
             }
         }, 1000);
+
+        // Убираем всплывающие уведомления браузера
+        if ('Notification' in window && Notification.permission === 'default') {
+            // Не запрашиваем разрешения на уведомления
+        }
     </script>
+    
+    <!-- Загружаем игру последней -->
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 </body>
 </html>
