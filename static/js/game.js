@@ -1,20 +1,36 @@
 class RouletteGame {
     constructor() {
-        this.socket = io();
+        console.log('Инициализация игры...');
+        
+        // Улучшенная инициализация Socket.IO
+        this.socket = io({
+            transports: ['polling', 'websocket'],
+            upgrade: true,
+            timeout: 20000,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
+        
         this.userBalance = parseInt(document.getElementById('balance')?.textContent) || 1000;
         this.currentBet = null;
         this.spinAngle = 0;
+        this.isConnected = false;
         
         this.initializeEventListeners();
         this.initializeSocketListeners();
+        
+        console.log('Игра инициализирована');
     }
 
     initializeEventListeners() {
+        console.log('Инициализация событий...');
+        
         // Кнопки управления ставками
         document.querySelectorAll('.bet-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const type = e.target.dataset.type;
-                setBetAmount(type);
+                this.setBetAmount(type);
             });
         });
 
@@ -22,6 +38,7 @@ class RouletteGame {
         document.querySelectorAll('.color-bet').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const color = e.target.dataset.color;
+                console.log('Попытка поставить на:', color);
                 this.placeBet(color);
             });
         });
@@ -42,36 +59,53 @@ class RouletteGame {
     }
 
     initializeSocketListeners() {
+        console.log('Инициализация Socket.IO...');
+        
         this.socket.on('connect', () => {
-            console.log('Подключено к серверу');
+            console.log('✅ Подключено к серверу');
+            this.isConnected = true;
+            this.showNotification('Подключение установлено', 'success');
         });
 
-        this.socket.on('disconnect', () => {
-            console.log('Отключено от сервера');
+        this.socket.on('disconnect', (reason) => {
+            console.log('❌ Отключено от сервера:', reason);
+            this.isConnected = false;
+            this.showNotification('Соединение потеряно', 'error');
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('❌ Ошибка подключения:', error);
+            this.showNotification('Ошибка подключения к серверу', 'error');
         });
 
         this.socket.on('game_state', (data) => {
+            console.log('📊 Получено состояние игры:', data);
             this.handleGameState(data);
         });
 
         this.socket.on('phase_change', (data) => {
+            console.log('🔄 Смена фазы:', data);
             this.handlePhaseChange(data);
         });
 
         this.socket.on('time_update', (data) => {
+            console.log('⏰ Обновление времени:', data.time_left);
             this.updateTimer(data);
         });
 
         this.socket.on('bet_placed', (data) => {
+            console.log('💰 Размещена ставка:', data);
             this.handleBetPlaced(data);
         });
 
         this.socket.on('game_result', (data) => {
+            console.log('🎯 Результат игры:', data);
             this.handleGameResult(data);
         });
     }
 
     handleGameState(data) {
+        console.log('Обработка состояния игры:', data);
         this.updateHistory(data.history);
         if (data.current_bets) {
             this.displayCurrentBets(data.current_bets);
@@ -79,6 +113,8 @@ class RouletteGame {
     }
 
     handlePhaseChange(data) {
+        console.log('Смена фазы на:', data.phase);
+        
         const phaseElement = document.getElementById('game-phase');
         const timerElement = document.getElementById('timer');
         const bettingPanel = document.querySelector('.betting-panel');
@@ -94,6 +130,7 @@ class RouletteGame {
                 // Сбрасываем ставку для нового раунда
                 this.currentBet = null;
                 this.clearBetHighlight();
+                console.log('🟢 Ставки открыты');
             } else if (data.phase === 'spinning') {
                 phaseElement.textContent = 'ВРАЩЕНИЕ РУЛЕТКИ';
                 phaseElement.className = 'game-phase spinning';
@@ -103,8 +140,10 @@ class RouletteGame {
                 }
                 // Запускаем анимацию рулетки
                 if (data.result) {
+                    console.log('🎰 Запуск рулетки с результатом:', data.result);
                     this.spinRoulette(data.result);
                 }
+                console.log('🔴 Ставки закрыты');
             }
         }
         
@@ -130,11 +169,13 @@ class RouletteGame {
     }
 
     handleBetPlaced(data) {
-        this.showNotification(`${data.username} поставил ${data.amount} на ${this.getColorName(data.bet_type)}`);
-        this.displayCurrentBets([data]);
+        console.log('Ставка размещена:', data);
+        this.showNotification(`${data.username} поставил ${data.amount} на ${this.getColorName(data.bet_type)}`, 'info');
     }
 
     handleGameResult(data) {
+        console.log('Результат игры:', data);
+        
         // Показываем результат только после окончания анимации (10 секунд)
         setTimeout(() => {
             this.updateHistory(data.history);
@@ -148,8 +189,10 @@ class RouletteGame {
                     this.updateBalance();
                     this.showWinModal(winAmount, data.winning_number);
                     this.createConfetti();
+                    console.log('🎉 Выиграл:', winAmount);
                 } else {
                     this.showLoseModal(data.winning_number);
+                    console.log('😞 Проиграл');
                 }
             }
 
@@ -164,94 +207,23 @@ class RouletteGame {
         }, 10000); // 10 секунд - время анимации вращения
     }
 
-    spinRoulette(resultData) {
-        const wheel = document.getElementById('roulette-wheel');
-        if (!wheel) return;
-
-        // Убираем предыдущие классы анимации
-        wheel.classList.remove('spinning');
-
-        // Получаем угол выпавшего сектора
-        const targetAngle = resultData.angle || this.getAngleForNumber(resultData.number);
-        const spins = 5; // Количество полных оборотов
-        
-        // Рассчитываем финальный угол (указатель находится сверху, поэтому компенсируем)
-        const finalAngle = (360 * spins) + (360 - targetAngle) + Math.random() * 5 - 2.5;
-
-        // Устанавливаем CSS переменную для анимации
-        wheel.style.setProperty('--spin-degrees', `${finalAngle}deg`);
-
-        // Запускаем анимацию
-        setTimeout(() => {
-            wheel.classList.add('spinning');
-        }, 100);
-
-        this.spinAngle = finalAngle % 360;
-    }
-
-    getAngleForNumber(number) {
-        // Углы для каждого номера (соответствуют порядку в HTML)
-        const angles = {
-            1: 0, 2: 24, 3: 48, 4: 72, 0: 96,
-            5: 120, 6: 144, 7: 168, 8: 192, 9: 216,
-            10: 240, 11: 264, 12: 288, 13: 312, 14: 336
-        };
-        return angles[number] || 0;
-    }
-
-    showGameResult(result, number) {
-        const resultElement = document.createElement('div');
-        resultElement.className = `game-result-popup ${result}`;
-        resultElement.innerHTML = `
-            <div class="result-content">
-                <h3>Выпало: ${number}</h3>
-                <div class="result-color-indicator ${result}"></div>
-                <p>${this.getColorName(result).toUpperCase()}</p>
-            </div>
-        `;
-
-        document.body.appendChild(resultElement);
-
-        setTimeout(() => {
-            resultElement.remove();
-        }, 4000);
-    }
-
-    showWinningNumber(number, color) {
-        const display = document.getElementById('winning-number');
-        const valueElement = display ? display.querySelector('.winning-value') : null;
-        
-        if (display && valueElement) {
-            valueElement.textContent = number;
-            valueElement.className = `winning-value ${color}`;
-            display.style.display = 'block';
-            
-            setTimeout(() => {
-                display.style.display = 'none';
-            }, 5000);
-        }
-    }
-
-    showWinModal(amount, number) {
-        const modal = document.getElementById('win-modal');
-        const winText = document.getElementById('win-text');
-        if (modal && winText) {
-            winText.textContent = `Поздравляем! Выпало ${number}! Вы выиграли ${amount} монет!`;
-            modal.style.display = 'block';
-        }
-    }
-
-    showLoseModal(number) {
-        const modal = document.getElementById('lose-modal');
-        const loseText = document.getElementById('lose-text');
-        if (modal && loseText) {
-            loseText.textContent = `Выпало ${number}. В этот раз не повезло, попробуйте снова!`;
-            modal.style.display = 'block';
-        }
-    }
-
     placeBet(color) {
-        const amount = parseInt(document.getElementById('bet-amount').textContent);
+        console.log('Попытка поставить ставку на:', color);
+        
+        // Проверяем подключение
+        if (!this.isConnected) {
+            this.showNotification('Нет соединения с сервером', 'error');
+            return;
+        }
+
+        const amountElement = document.getElementById('bet-amount');
+        if (!amountElement) {
+            console.error('Элемент bet-amount не найден');
+            return;
+        }
+
+        const amount = parseInt(amountElement.textContent);
+        console.log('Сумма ставки:', amount);
         
         if (amount > this.userBalance) {
             this.showNotification('Недостаточно средств!', 'error');
@@ -263,6 +235,8 @@ class RouletteGame {
             return;
         }
 
+        console.log('Отправка ставки на сервер...');
+        
         fetch('/api/place_bet', {
             method: 'POST',
             headers: {
@@ -273,8 +247,12 @@ class RouletteGame {
                 amount: amount
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Ответ сервера:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Данные от сервера:', data);
             if (data.success) {
                 this.currentBet = { type: color, amount: amount };
                 this.userBalance -= amount;
@@ -291,7 +269,114 @@ class RouletteGame {
         });
     }
 
+    setBetAmount(type) {
+        const betAmountElement = document.getElementById('bet-amount');
+        if (!betAmountElement) return;
+        
+        const currentAmount = parseInt(betAmountElement.textContent);
+        let newAmount = currentAmount;
+
+        switch(type) {
+            case 'min':
+                newAmount = 10;
+                break;
+            case 'half':
+                newAmount = Math.floor(currentAmount / 2);
+                if (newAmount < 10) newAmount = 10;
+                break;
+            case 'double':
+                newAmount = currentAmount * 2;
+                break;
+            case 'max':
+                newAmount = this.userBalance;
+                break;
+        }
+
+        betAmountElement.textContent = newAmount;
+        console.log('Новая сумма ставки:', newAmount);
+    }
+
+    spinRoulette(resultData) {
+        console.log('Вращение рулетки:', resultData);
+        
+        const wheel = document.getElementById('roulette-wheel');
+        if (!wheel) {
+            console.error('Элемент roulette-wheel не найден');
+            return;
+        }
+
+        // Убираем предыдущие классы анимации
+        wheel.classList.remove('spinning');
+
+        // Получаем угол выпавшего сектора
+        const targetAngle = resultData.angle || this.getAngleForNumber(resultData.number);
+        const spins = 5; // Количество полных оборотов
+        
+        // Рассчитываем финальный угол
+        const finalAngle = (360 * spins) + (360 - targetAngle);
+
+        console.log('Угол вращения:', finalAngle);
+
+        // Устанавливаем CSS переменную для анимации
+        wheel.style.setProperty('--spin-degrees', `${finalAngle}deg`);
+
+        // Запускаем анимацию
+        setTimeout(() => {
+            wheel.classList.add('spinning');
+        }, 100);
+
+        this.spinAngle = finalAngle % 360;
+    }
+
+    getAngleForNumber(number) {
+        const angles = {
+            1: 0, 2: 24, 3: 48, 4: 72, 0: 96,
+            5: 120, 6: 144, 7: 168, 8: 192, 9: 216,
+            10: 240, 11: 264, 12: 288, 13: 312, 14: 336
+        };
+        return angles[number] || 0;
+    }
+
+    showNotification(message, type = 'info') {
+        console.log(`Уведомление [${type}]:`, message);
+        
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 10000;
+            animation: slideDown 0.3s ease;
+        `;
+
+        if (type === 'success') {
+            notification.style.background = '#00ff88';
+            notification.style.color = '#000';
+        } else if (type === 'error') {
+            notification.style.background = '#ff4757';
+            notification.style.color = '#fff';
+        } else {
+            notification.style.background = '#ffd700';
+            notification.style.color = '#000';
+        }
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
     highlightBet(color, amount) {
+        console.log('Выделение ставки:', color, amount);
+        
         // Убираем предыдущие выделения
         this.clearBetHighlight();
         
@@ -335,73 +420,62 @@ class RouletteGame {
             const historyItem = document.createElement('div');
             historyItem.className = `history-item ${item.result}`;
             historyItem.innerHTML = `
-                <span class="history-number">${item.number || item.result}</span>
+                <span class="history-number">${item.number}</span>
             `;
             historyContainer.appendChild(historyItem);
         });
     }
 
-    displayCurrentBets(bets) {
-        const betsContainer = document.getElementById('current-bets');
-        if (!betsContainer || !bets) return;
-
-        // Очищаем предыдущие ставки
-        betsContainer.innerHTML = '<h3>Текущие ставки:</h3>';
-        
-        bets.forEach(bet => {
-            const betElement = document.createElement('div');
-            betElement.className = 'current-bet-item';
-            betElement.innerHTML = `
-                <span class="bet-player">${bet.username}</span>
-                <span class="bet-details">${bet.amount} на ${this.getColorName(bet.bet_type)}</span>
-            `;
-            betsContainer.appendChild(betElement);
-        });
-    }
-
-    getColorName(color) {
-        const colorNames = {
-            'red': 'красное',
-            'black': 'черное',
-            'green': 'зеленое'
-        };
-        return colorNames[color] || color;
-    }
-
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-
-        // Добавляем стили для уведомлений
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-weight: bold;
-            z-index: 10000;
-            animation: slideDown 0.3s ease;
+    showGameResult(result, number) {
+        const resultElement = document.createElement('div');
+        resultElement.className = `game-result-popup ${result}`;
+        resultElement.innerHTML = `
+            <div class="result-content">
+                <h3>Выпало: ${number}</h3>
+                <div class="result-color-indicator ${result}"></div>
+                <p>${this.getColorName(result).toUpperCase()}</p>
+            </div>
         `;
 
-        if (type === 'success') {
-            notification.style.background = '#00ff88';
-            notification.style.color = '#000';
-        } else if (type === 'error') {
-            notification.style.background = '#ff4757';
-            notification.style.color = '#fff';
-        } else {
-            notification.style.background = '#ffd700';
-            notification.style.color = '#000';
-        }
-
-        document.body.appendChild(notification);
+        document.body.appendChild(resultElement);
 
         setTimeout(() => {
-            notification.remove();
-        }, 3000);
+            resultElement.remove();
+        }, 4000);
+    }
+
+    showWinningNumber(number, color) {
+        const display = document.getElementById('winning-number');
+        if (display) {
+            const valueElement = display.querySelector('.winning-value');
+            if (valueElement) {
+                valueElement.textContent = number;
+                valueElement.className = `winning-value ${color}`;
+                display.style.display = 'block';
+                
+                setTimeout(() => {
+                    display.style.display = 'none';
+                }, 5000);
+            }
+        }
+    }
+
+    showWinModal(amount, number) {
+        const modal = document.getElementById('win-modal');
+        const winText = document.getElementById('win-text');
+        if (modal && winText) {
+            winText.textContent = `Поздравляем! Выпало ${number}! Вы выиграли ${amount} монет!`;
+            modal.style.display = 'block';
+        }
+    }
+
+    showLoseModal(number) {
+        const modal = document.getElementById('lose-modal');
+        const loseText = document.getElementById('lose-text');
+        if (modal && loseText) {
+            loseText.textContent = `Выпало ${number}. В этот раз не повезло, попробуйте снова!`;
+            modal.style.display = 'block';
+        }
     }
 
     createConfetti() {
@@ -427,37 +501,27 @@ class RouletteGame {
             }, 5000);
         }
     }
-}
 
-// Функции управления ставками
-function setBetAmount(type) {
-    const betAmountElement = document.getElementById('bet-amount');
-    const currentAmount = parseInt(betAmountElement.textContent);
-    let newAmount = currentAmount;
-
-    switch(type) {
-        case 'min':
-            newAmount = 10;
-            break;
-        case 'half':
-            newAmount = Math.floor(currentAmount / 2);
-            if (newAmount < 10) newAmount = 10;
-            break;
-        case 'double':
-            newAmount = currentAmount * 2;
-            break;
-        case 'max':
-            const balance = parseInt(document.getElementById('balance').textContent);
-            newAmount = balance;
-            break;
+    getColorName(color) {
+        const colorNames = {
+            'red': 'красное',
+            'black': 'черное',
+            'green': 'зеленое'
+        };
+        return colorNames[color] || color;
     }
 
-    betAmountElement.textContent = newAmount;
+    displayCurrentBets(bets) {
+        console.log('Отображение текущих ставок:', bets);
+        // Можно добавить отображение текущих ставок если нужно
+    }
 }
 
 // Инициализация игры при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // CSS анимации для конфетти и уведомлений
+    console.log('🚀 Загрузка страницы завершена');
+    
+    // Добавляем CSS анимации
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideDown {
@@ -522,7 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
             border-radius: 50%;
             margin: 0 auto 1rem auto;
             border: 3px solid #fff;
-            }
+        }
         
         .result-color-indicator.red { background: #ff4757; }
         .result-color-indicator.black { background: #2f3542; }
@@ -539,79 +603,31 @@ document.addEventListener('DOMContentLoaded', function() {
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
-        
-        .current-bet-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem;
-            margin: 0.5rem 0;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-        
-        .bet-player {
-            font-weight: bold;
-            color: #ffd700;
-        }
-        
-        .bet-details {
-            color: #ccc;
-        }
-        
-        .history-item {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin: 0.25rem;
-            font-weight: bold;
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .history-item.red { background: #ff4757; }
-        .history-item.black { background: #2f3542; }
-        .history-item.green { background: #00ff88; color: #000; }
-        
-        .history-number {
-            font-size: 0.9rem;
-        }
-        
-        @media (max-width: 768px) {
-            .game-result-popup {
-                width: 90%;
-                padding: 1.5rem;
-            }
-            
-            .result-content h3 {
-                font-size: 1.5rem;
-            }
-            
-            .result-color-indicator {
-                width: 50px;
-                height: 50px;
-            }
-            
-            .result-content p {
-                font-size: 1.2rem;
-            }
-            
-            .bet-indicator {
-                width: 25px;
-                height: 25px;
-                font-size: 0.7rem;
-            }
-            
-            .history-item {
-                width: 35px;
-                height: 35px;
-                font-size: 0.8rem;
-            }
-        }
     `;
     document.head.appendChild(style);
+
+    // Проверяем наличие всех необходимых элементов
+    const requiredElements = [
+        'balance', 'bet-amount', 'game-phase', 'timer', 'roulette-wheel'
+    ];
+    
+    const missingElements = requiredElements.filter(id => !document.getElementById(id));
+    
+    if (missingElements.length > 0) {
+        console.error('❌ Отсутствуют элементы:', missingElements);
+        alert('Ошибка: отсутствуют необходимые элементы на странице. Проверьте HTML.');
+        return;
+    }
+
+    // Проверяем кнопки ставок
+    const colorBets = document.querySelectorAll('.color-bet');
+    if (colorBets.length === 0) {
+        console.error('❌ Кнопки ставок не найдены');
+        alert('Ошибка: кнопки ставок не найдены. Проверьте HTML.');
+        return;
+    }
+
+    console.log('✅ Все элементы найдены, инициализируем игру...');
 
     // Инициализируем игру
     const game = new RouletteGame();
@@ -619,90 +635,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Делаем игру доступной глобально для отладки
     window.rouletteGame = game;
     
-    console.log('Рулетка инициализирована');
-});
-
-// Дополнительные утилиты
-function formatNumber(num) {
-    return new Intl.NumberFormat('ru-RU').format(num);
-}
-
-function getRandomColor() {
-    const colors = ['#ff4757', '#ffd700', '#00ff88', '#3742fa', '#f1c40f'];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-// Обработка ошибок WebSocket
-window.addEventListener('error', function(event) {
-    console.error('Ошибка приложения:', event.error);
-});
-
-// Обработка потери соединения
-window.addEventListener('offline', function() {
-    const game = window.rouletteGame;
-    if (game) {
-        game.showNotification('Соединение потеряно. Попробуйте обновить страницу.', 'error');
-    }
-});
-
-window.addEventListener('online', function() {
-    const game = window.rouletteGame;
-    if (game) {
-        game.showNotification('Соединение восстановлено', 'success');
-    }
-});
-
-// Предотвращение двойных кликов
-let lastClickTime = 0;
-document.addEventListener('click', function(event) {
-    const now = Date.now();
-    if (now - lastClickTime < 300) { // 300мс защита от двойного клика
-        if (event.target.classList.contains('color-bet') || 
-            event.target.classList.contains('bet-btn')) {
-            event.preventDefault();
-            return false;
+    console.log('✅ Рулетка инициализирована и готова к работе');
+    
+    // Проверяем подключение каждые 5 секунд
+    setInterval(() => {
+        if (game.socket.connected) {
+            console.log('📡 Соединение активно');
+        } else {
+            console.log('❌ Соединение потеряно');
         }
-    }
-    lastClickTime = now;
+    }, 5000);
 });
-
-// Автоматическое переподключение при потере соединения
-function attemptReconnect() {
-    const game = window.rouletteGame;
-    if (game && game.socket.disconnected) {
-        console.log('Попытка переподключения...');
-        game.socket.connect();
-        setTimeout(() => {
-            if (game.socket.disconnected) {
-                attemptReconnect();
-            }
-        }, 5000);
-    }
-}
-
-// Проверка соединения каждые 30 секунд
-setInterval(() => {
-    const game = window.rouletteGame;
-    if (game && game.socket.disconnected) {
-        attemptReconnect();
-    }
-}, 30000);
-
-// Функция для безопасного выполнения кода
-function safeExecute(fn, context = null) {
-    try {
-        return fn.call(context);
-    } catch (error) {
-        console.error('Ошибка выполнения:', error);
-        const game = window.rouletteGame;
-        if (game) {
-            game.showNotification('Произошла ошибка. Попробуйте еще раз.', 'error');
-        }
-        return null;
-    }
-}
-
-// Экспорт для использования в других скриптах
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = RouletteGame;
-}
