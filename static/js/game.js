@@ -1,22 +1,57 @@
 class RouletteGame {
     constructor() {
         this.socket = io();
-        this.userBalance = parseInt(document.getElementById('balance')?.textContent) || 0;
+        this.userBalance = parseInt(document.getElementById('balance')?.textContent) || 1000;
         this.currentBet = null;
-        this.gamePhase = 'betting';
         this.spinAngle = 0;
+        
         this.initializeEventListeners();
-        this.connectSocket();
+        this.initializeSocketListeners();
     }
 
     initializeEventListeners() {
-        // Socket события
+        // Кнопки управления ставками
+        document.querySelectorAll('.bet-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.target.dataset.type;
+                setBetAmount(type);
+            });
+        });
+
+        // Кнопки цветных ставок
+        document.querySelectorAll('.color-bet').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const color = e.target.dataset.color;
+                this.placeBet(color);
+            });
+        });
+
+        // Закрытие модальных окон
+        document.querySelectorAll('.modal .close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', () => {
+                closeBtn.closest('.modal').style.display = 'none';
+            });
+        });
+
+        // Закрытие модальных окон по клику вне окна
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    }
+
+    initializeSocketListeners() {
         this.socket.on('connect', () => {
-            console.log('Подключен к серверу');
+            console.log('Подключено к серверу');
+        });
+
+        this.socket.on('disconnect', () => {
+            console.log('Отключено от сервера');
         });
 
         this.socket.on('game_state', (data) => {
-            this.updateGameState(data);
+            this.handleGameState(data);
         });
 
         this.socket.on('phase_change', (data) => {
@@ -24,255 +59,83 @@ class RouletteGame {
         });
 
         this.socket.on('time_update', (data) => {
-            this.updateTimer(data.time_left);
+            this.updateTimer(data);
         });
 
         this.socket.on('bet_placed', (data) => {
-            this.addPlayerBet(data);
+            this.handleBetPlaced(data);
         });
 
         this.socket.on('game_result', (data) => {
             this.handleGameResult(data);
         });
-
-        // Кнопки ставок
-        const colorButtons = document.querySelectorAll('.color-bet');
-        colorButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                const color = e.currentTarget.classList.contains('red') ? 'red' :
-                             e.currentTarget.classList.contains('black') ? 'black' : 'green';
-                this.placeBet(color);
-            });
-        });
     }
 
-    connectSocket() {
-        this.socket.connect();
-    }
-
-    updateGameState(data) {
-        this.gamePhase = data.phase;
-        this.updateTimer(data.time_left);
-        this.updatePlayerBets(data.current_bets);
+    handleGameState(data) {
         this.updateHistory(data.history);
+        if (data.current_bets) {
+            this.displayCurrentBets(data.current_bets);
+        }
     }
 
     handlePhaseChange(data) {
-        this.gamePhase = data.phase;
-        const phaseText = document.getElementById('phase-text');
-        const timerCircle = document.querySelector('.timer-circle');
-
-        if (data.phase === 'betting') {
-            phaseText.textContent = 'Делайте ставки!';
-            timerCircle.style.background = 'linear-gradient(45deg, #ffd700, #ffed4a)';
-            this.enableBetting();
-        } else if (data.phase === 'spinning') {
-            phaseText.textContent = 'Рулетка крутится!';
-            timerCircle.style.background = 'linear-gradient(45deg, #ff4757, #ff6b7d)';
-            this.disableBetting();
-            this.spinRoulette(data.result);
-        }
-    }
-
-    updateTimer(timeLeft) {
-        const timerText = document.getElementById('timer-text');
-        if (timerText) {
-            timerText.textContent = timeLeft;
-        }
-    }
-
-    enableBetting() {
-        const colorButtons = document.querySelectorAll('.color-bet');
-        colorButtons.forEach(button => {
-            button.disabled = false;
-            button.classList.remove('loading');
-        });
-    }
-
-    disableBetting() {
-        const colorButtons = document.querySelectorAll('.color-bet');
-        colorButtons.forEach(button => {
-            button.disabled = true;
-            button.classList.add('loading');
-        });
-    }
-
-    placeBet(betType) {
-        if (this.gamePhase !== 'betting') {
-            this.showNotification('Ставки не принимаются!', 'error');
-            return;
-        }
-
-        const betAmount = parseInt(document.getElementById('bet-amount')?.value) || 0;
+        const phaseElement = document.getElementById('game-phase');
+        const timerElement = document.getElementById('timer');
+        const bettingPanel = document.querySelector('.betting-panel');
         
-        if (betAmount < 10) {
-            this.showNotification('Минимальная ставка 10 монет!', 'error');
-            return;
-        }
-
-        if (betAmount > this.userBalance) {
-            this.showNotification('Недостаточно средств!', 'error');
-            return;
-        }
-
-        // Отправляем ставку на сервер
-        fetch('/api/place_bet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                bet_type: betType,
-                amount: betAmount
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                this.userBalance -= betAmount;
-                this.updateBalance();
-                this.currentBet = { type: betType, amount: betAmount };
-                this.showNotification(`Ставка ${betAmount} на ${this.getColorName(betType)} принята!`, 'success');
-                this.highlightBetButton(betType);
-            } else {
-                this.showNotification(data.error, 'error');
+        if (phaseElement) {
+            if (data.phase === 'betting') {
+                phaseElement.textContent = 'ВРЕМЯ СТАВОК';
+                phaseElement.className = 'game-phase betting';
+                if (bettingPanel) {
+                    bettingPanel.style.pointerEvents = 'auto';
+                    bettingPanel.style.opacity = '1';
+                }
+                // Сбрасываем ставку для нового раунда
+                this.currentBet = null;
+                this.clearBetHighlight();
+            } else if (data.phase === 'spinning') {
+                phaseElement.textContent = 'ВРАЩЕНИЕ РУЛЕТКИ';
+                phaseElement.className = 'game-phase spinning';
+                if (bettingPanel) {
+                    bettingPanel.style.pointerEvents = 'none';
+                    bettingPanel.style.opacity = '0.5';
+                }
+                // Запускаем анимацию рулетки
+                if (data.result) {
+                    this.spinRoulette(data.result);
+                }
             }
-        })
-        .catch(error => {
-            console.error('Ошибка при размещении ставки:', error);
-            this.showNotification('Ошибка при размещении ставки', 'error');
-        });
-    }
-
-    getColorName(color) {
-        const names = {
-            'red': 'красное',
-            'black': 'чёрное',
-            'green': 'зелёное'
-        };
-        return names[color] || color;
-    }
-
-    highlightBetButton(betType) {
-        // Убираем подсветку со всех кнопок
-        document.querySelectorAll('.color-bet').forEach(btn => {
-            btn.classList.remove('active-bet');
-        });
-
-        // Добавляем подсветку на выбранную кнопку
-        const button = document.querySelector(`.color-bet.${betType}`);
-        if (button) {
-            button.classList.add('active-bet');
-            button.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
+        }
+        
+        if (timerElement) {
+            timerElement.textContent = data.time_left;
         }
     }
 
-    updateBalance() {
-        const balanceElement = document.getElementById('balance');
-        if (balanceElement) {
-            balanceElement.textContent = this.userBalance;
-            balanceElement.classList.add('pulse-animation');
-            setTimeout(() => {
-                balanceElement.classList.remove('pulse-animation');
-            }, 1000);
+    updateTimer(data) {
+        const timerElement = document.getElementById('timer');
+        if (timerElement) {
+            timerElement.textContent = data.time_left;
+            
+            // Добавляем визуальные эффекты для последних секунд
+            if (data.time_left <= 5) {
+                timerElement.style.color = '#ff4757';
+                timerElement.style.animation = 'pulse 1s infinite';
+            } else {
+                timerElement.style.color = '#ffd700';
+                timerElement.style.animation = 'none';
+            }
         }
     }
 
-    addPlayerBet(data) {
-        const betsContainer = document.getElementById('bets-container');
-        if (!betsContainer) return;
-
-        const betElement = document.createElement('div');
-        betElement.className = 'player-bet';
-        betElement.innerHTML = `
-            <div class="bet-info">
-                <div class="bet-color ${data.bet_type}"></div>
-                <span class="player-name">${data.username}</span>
-            </div>
-            <span class="bet-amount">${data.amount}</span>
-        `;
-
-        betsContainer.insertBefore(betElement, betsContainer.firstChild);
-
-        // Удаляем старые ставки, если их больше 10
-        while (betsContainer.children.length > 10) {
-            betsContainer.removeChild(betsContainer.lastChild);
-        }
+    handleBetPlaced(data) {
+        this.showNotification(`${data.username} поставил ${data.amount} на ${this.getColorName(data.bet_type)}`);
+        this.displayCurrentBets([data]);
     }
 
-    updatePlayerBets(bets) {
-        const betsContainer = document.getElementById('bets-container');
-        if (!betsContainer) return;
-
-        betsContainer.innerHTML = '';
-        bets.forEach(bet => {
-            this.addPlayerBet(bet);
-        });
-    }
-
-    spinRoulette(result) {
-        const wheel = document.getElementById('roulette-wheel');
-        if (!wheel) return;
-
-        // Убираем предыдущие классы анимации
-        wheel.classList.remove('spinning');
-
-        // Рассчитываем угол поворота
-        const colorAngles = this.getColorAngles();
-        const targetAngle = colorAngles[result];
-        const spins = 5; // Количество полных оборотов
-        const totalAngle = (360 * spins) + targetAngle + Math.random() * 20 - 10; // Добавляем небольшую случайность
-
-        // Устанавливаем CSS переменную для анимации
-        wheel.style.setProperty('--spin-degrees', `${totalAngle}deg`);
-
-        // Запускаем анимацию
-        setTimeout(() => {
-            wheel.classList.add('spinning');
-        }, 100);
-
-        this.spinAngle = totalAngle % 360;
-    }
-
-    getColorAngles() {
-    // Углы для 15 секторов (24 градуса на сектор)
-    const sectorAngle = 24;
-    const angles = {
-        'red': [0, 48, 120, 168, 240, 288, 336],      // красные сектора
-        'black': [24, 72, 144, 192, 216, 264, 312],   // черные сектора
-        'green': [96]                                  // зеленый сектор
-    };
-    
-    // Выбираем случайный угол из доступных для выпавшего цвета
-    return angles;
-}
-
-spinRoulette(result) {
-    const wheel = document.getElementById('roulette-wheel');
-    if (!wheel) return;
-
-    // Убираем предыдущие классы анимации
-    wheel.classList.remove('spinning');
-
-    // Рассчитываем угол поворота
-    const colorAngles = this.getColorAngles();
-    const availableAngles = colorAngles[result];
-    const targetAngle = availableAngles[Math.floor(Math.random() * availableAngles.length)];
-    const spins = 5; // Количество полных оборотов
-    const totalAngle = (360 * spins) + targetAngle + Math.random() * 10 - 5; // Добавляем небольшую случайность
-
-    // Устанавливаем CSS переменную для анимации
-    wheel.style.setProperty('--spin-degrees', `${totalAngle}deg`);
-
-    // Запускаем анимацию
-    setTimeout(() => {
-        wheel.classList.add('spinning');
-    }, 100);
-
-    this.spinAngle = totalAngle % 360;
-}
-    
     handleGameResult(data) {
+        // Показываем результат только после окончания анимации (10 секунд)
         setTimeout(() => {
             this.updateHistory(data.history);
             
@@ -283,30 +146,67 @@ spinRoulette(result) {
                     const winAmount = this.currentBet.amount * multiplier;
                     this.userBalance += winAmount;
                     this.updateBalance();
-                    this.showWinModal(winAmount);
+                    this.showWinModal(winAmount, data.winning_number);
                     this.createConfetti();
                 } else {
-                    this.showLoseModal();
+                    this.showLoseModal(data.winning_number);
                 }
             }
 
             // Показываем результат
-            this.showGameResult(data.result);
+            this.showGameResult(data.result, data.winning_number);
+            this.showWinningNumber(data.winning_number, data.result);
 
             // Сбрасываем текущую ставку
             this.currentBet = null;
             this.clearBetHighlight();
 
-        }, 10000); // Показываем результат после окончания анимации
+        }, 10000); // 10 секунд - время анимации вращения
     }
 
-    showGameResult(result) {
+    spinRoulette(resultData) {
+        const wheel = document.getElementById('roulette-wheel');
+        if (!wheel) return;
+
+        // Убираем предыдущие классы анимации
+        wheel.classList.remove('spinning');
+
+        // Получаем угол выпавшего сектора
+        const targetAngle = resultData.angle || this.getAngleForNumber(resultData.number);
+        const spins = 5; // Количество полных оборотов
+        
+        // Рассчитываем финальный угол (указатель находится сверху, поэтому компенсируем)
+        const finalAngle = (360 * spins) + (360 - targetAngle) + Math.random() * 5 - 2.5;
+
+        // Устанавливаем CSS переменную для анимации
+        wheel.style.setProperty('--spin-degrees', `${finalAngle}deg`);
+
+        // Запускаем анимацию
+        setTimeout(() => {
+            wheel.classList.add('spinning');
+        }, 100);
+
+        this.spinAngle = finalAngle % 360;
+    }
+
+    getAngleForNumber(number) {
+        // Углы для каждого номера (соответствуют порядку в HTML)
+        const angles = {
+            1: 0, 2: 24, 3: 48, 4: 72, 0: 96,
+            5: 120, 6: 144, 7: 168, 8: 192, 9: 216,
+            10: 240, 11: 264, 12: 288, 13: 312, 14: 336
+        };
+        return angles[number] || 0;
+    }
+
+    showGameResult(result, number) {
         const resultElement = document.createElement('div');
         resultElement.className = `game-result-popup ${result}`;
         resultElement.innerHTML = `
             <div class="result-content">
-                <h3>Выпало: ${this.getColorName(result).toUpperCase()}</h3>
+                <h3>Выпало: ${number}</h3>
                 <div class="result-color-indicator ${result}"></div>
+                <p>${this.getColorName(result).toUpperCase()}</p>
             </div>
         `;
 
@@ -314,100 +214,228 @@ spinRoulette(result) {
 
         setTimeout(() => {
             resultElement.remove();
-        }, 3000);
+        }, 4000);
     }
 
-    clearBetHighlight() {
-        document.querySelectorAll('.color-bet').forEach(btn => {
-            btn.classList.remove('active-bet');
-            btn.style.boxShadow = '';
+    showWinningNumber(number, color) {
+        const display = document.getElementById('winning-number');
+        const valueElement = display ? display.querySelector('.winning-value') : null;
+        
+        if (display && valueElement) {
+            valueElement.textContent = number;
+            valueElement.className = `winning-value ${color}`;
+            display.style.display = 'block';
+            
+            setTimeout(() => {
+                display.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    showWinModal(amount, number) {
+        const modal = document.getElementById('win-modal');
+        const winText = document.getElementById('win-text');
+        if (modal && winText) {
+            winText.textContent = `Поздравляем! Выпало ${number}! Вы выиграли ${amount} монет!`;
+            modal.style.display = 'block';
+        }
+    }
+
+    showLoseModal(number) {
+        const modal = document.getElementById('lose-modal');
+        const loseText = document.getElementById('lose-text');
+        if (modal && loseText) {
+            loseText.textContent = `Выпало ${number}. В этот раз не повезло, попробуйте снова!`;
+            modal.style.display = 'block';
+        }
+    }
+
+    placeBet(color) {
+        const amount = parseInt(document.getElementById('bet-amount').textContent);
+        
+        if (amount > this.userBalance) {
+            this.showNotification('Недостаточно средств!', 'error');
+            return;
+        }
+
+        if (this.currentBet) {
+            this.showNotification('Вы уже сделали ставку в этом раунде!', 'error');
+            return;
+        }
+
+        fetch('/api/place_bet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                bet_type: color,
+                amount: amount
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                this.currentBet = { type: color, amount: amount };
+                this.userBalance -= amount;
+                this.updateBalance();
+                this.highlightBet(color, amount);
+                this.showNotification(data.message || 'Ставка принята!', 'success');
+            } else {
+                this.showNotification(data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при размещении ставки:', error);
+            this.showNotification('Ошибка при размещении ставки', 'error');
         });
     }
 
+    highlightBet(color, amount) {
+        // Убираем предыдущие выделения
+        this.clearBetHighlight();
+        
+        // Выделяем выбранную ставку
+        const colorBet = document.querySelector(`.color-bet[data-color="${color}"]`);
+        if (colorBet) {
+            colorBet.classList.add('selected');
+            
+            // Добавляем индикатор ставки
+            const betIndicator = document.createElement('div');
+            betIndicator.className = 'bet-indicator';
+            betIndicator.textContent = amount;
+            colorBet.appendChild(betIndicator);
+        }
+    }
+
+    clearBetHighlight() {
+        document.querySelectorAll('.color-bet').forEach(bet => {
+            bet.classList.remove('selected');
+            const indicator = bet.querySelector('.bet-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        });
+    }
+
+    updateBalance() {
+        const balanceElement = document.getElementById('balance');
+        if (balanceElement) {
+            balanceElement.textContent = this.userBalance;
+        }
+    }
+
     updateHistory(history) {
-        const historyContainer = document.getElementById('history-items');
-        if (!historyContainer) return;
+        const historyContainer = document.getElementById('history-list');
+        if (!historyContainer || !history) return;
 
         historyContainer.innerHTML = '';
+        
         history.slice(-10).forEach(item => {
             const historyItem = document.createElement('div');
             historyItem.className = `history-item ${item.result}`;
-            historyItem.innerHTML = '<span class="history-color"></span>';
+            historyItem.innerHTML = `
+                <span class="history-number">${item.number || item.result}</span>
+            `;
             historyContainer.appendChild(historyItem);
         });
     }
 
-    showWinModal(amount) {
-        const modal = document.getElementById('win-modal');
-        const winText = document.getElementById('win-text');
-        if (modal && winText) {
-            winText.textContent = `Поздравляем! Вы выиграли ${amount} монет!`;
-            modal.style.display = 'block';
-        }
+    displayCurrentBets(bets) {
+        const betsContainer = document.getElementById('current-bets');
+        if (!betsContainer || !bets) return;
+
+        // Очищаем предыдущие ставки
+        betsContainer.innerHTML = '<h3>Текущие ставки:</h3>';
+        
+        bets.forEach(bet => {
+            const betElement = document.createElement('div');
+            betElement.className = 'current-bet-item';
+            betElement.innerHTML = `
+                <span class="bet-player">${bet.username}</span>
+                <span class="bet-details">${bet.amount} на ${this.getColorName(bet.bet_type)}</span>
+            `;
+            betsContainer.appendChild(betElement);
+        });
     }
 
-    showLoseModal() {
-        const modal = document.getElementById('lose-modal');
-        const loseText = document.getElementById('lose-text');
-        if (modal && loseText) {
-            loseText.textContent = 'В этот раз не повезло, попробуйте снова!';
-            modal.style.display = 'block';
-        }
+    getColorName(color) {
+        const colorNames = {
+            'red': 'красное',
+            'black': 'черное',
+            'green': 'зеленое'
+        };
+        return colorNames[color] || color;
     }
 
-    showNotification(message, type) {
+    showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-        
-        Object.assign(notification.style, {
-            position: 'fixed',
-            top: '100px',
-            right: '20px',
-            padding: '1rem 2rem',
-            borderRadius: '10px',
-            color: 'white',
-            fontWeight: 'bold',
-            zIndex: '2000',
-            animation: 'slideInRight 0.5s ease',
-            background: type === 'success' ? '#00ff88' : '#ff4757'
-        });
+
+        // Добавляем стили для уведомлений
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 10000;
+            animation: slideDown 0.3s ease;
+        `;
+
+        if (type === 'success') {
+            notification.style.background = '#00ff88';
+            notification.style.color = '#000';
+        } else if (type === 'error') {
+            notification.style.background = '#ff4757';
+            notification.style.color = '#fff';
+        } else {
+            notification.style.background = '#ffd700';
+            notification.style.color = '#000';
+        }
+
         document.body.appendChild(notification);
 
         setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.5s ease';
-            setTimeout(() => {
-                notification.remove();
-            }, 500);
+            notification.remove();
         }, 3000);
     }
 
     createConfetti() {
+        // Создаем конфетти для победы
         for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.cssText = `
+                position: fixed;
+                width: 10px;
+                height: 10px;
+                background: ${['#ff4757', '#ffd700', '#00ff88'][Math.floor(Math.random() * 3)]};
+                left: ${Math.random() * 100}vw;
+                top: -10px;
+                z-index: 10000;
+                animation: confetti-fall ${2 + Math.random() * 3}s linear forwards;
+            `;
+            
+            document.body.appendChild(confetti);
+            
             setTimeout(() => {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.backgroundColor = ['#ffd700', '#ff4757', '#00ff88'][Math.floor(Math.random() * 3)];
-                confetti.style.animationDelay = Math.random() * 2 + 's';
-                document.body.appendChild(confetti);
-
-                setTimeout(() => {
-                    confetti.remove();
-                }, 3000);
-            }, i * 50);
+                confetti.remove();
+            }, 5000);
         }
     }
 }
 
-// Функции для управления ставками
+// Функции управления ставками
 function setBetAmount(type) {
-    const betInput = document.getElementById('bet-amount');
-    const currentAmount = parseInt(betInput.value) || 10;
-    const balance = parseInt(document.getElementById('balance').textContent) || 0;
+    const betAmountElement = document.getElementById('bet-amount');
+    const currentAmount = parseInt(betAmountElement.textContent);
+    let newAmount = currentAmount;
 
-    let newAmount;
-    switch (type) {
+    switch(type) {
         case 'min':
             newAmount = 10;
             break;
@@ -417,126 +445,264 @@ function setBetAmount(type) {
             break;
         case 'double':
             newAmount = currentAmount * 2;
-            if (newAmount > balance) newAmount = balance;
             break;
         case 'max':
+            const balance = parseInt(document.getElementById('balance').textContent);
             newAmount = balance;
             break;
-        default:
-            newAmount = 10;
     }
 
-    betInput.value = newAmount;
-    
-    // Анимация для кнопки
-    const button = event.target;
-    button.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-        button.style.transform = '';
-    }, 150);
-}
-
-function placeBet(color) {
-    if (window.rouletteGame) {
-        window.rouletteGame.placeBet(color);
-    }
-}
-
-function closeModal() {
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-    });
+    betAmountElement.textContent = newAmount;
 }
 
 // Инициализация игры при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('roulette-wheel')) {
-        window.rouletteGame = new RouletteGame();
+    // CSS анимации для конфетти и уведомлений
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        
+        .bet-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ffd700;
+            color: #000;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .color-bet.selected {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            transform: scale(1.05);
+        }
+        
+        .game-result-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 10000;
+            animation: popIn 0.5s ease;
+            border: 3px solid;
+        }
+        
+        .game-result-popup.red { border-color: #ff4757; }
+        .game-result-popup.black { border-color: #2f3542; }
+        .game-result-popup.green { border-color: #00ff88; }
+        
+        .result-content h3 {
+            margin: 0 0 1rem 0;
+            font-size: 2rem;
+            color: #fff;
+        }
+        
+        .result-color-indicator {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 1rem auto;
+            border: 3px solid #fff;
+            }
+        
+        .result-color-indicator.red { background: #ff4757; }
+        .result-color-indicator.black { background: #2f3542; }
+        .result-color-indicator.green { background: #00ff88; }
+        
+        .result-content p {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        .current-bet-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .bet-player {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .bet-details {
+            color: #ccc;
+        }
+        
+        .history-item {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0.25rem;
+            font-weight: bold;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .history-item.red { background: #ff4757; }
+        .history-item.black { background: #2f3542; }
+        .history-item.green { background: #00ff88; color: #000; }
+        
+        .history-number {
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .game-result-popup {
+                width: 90%;
+                padding: 1.5rem;
+            }
+            
+            .result-content h3 {
+                font-size: 1.5rem;
+            }
+            
+            .result-color-indicator {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .result-content p {
+                font-size: 1.2rem;
+            }
+            
+            .bet-indicator {
+                width: 25px;
+                height: 25px;
+                font-size: 0.7rem;
+            }
+            
+            .history-item {
+                width: 35px;
+                height: 35px;
+                font-size: 0.8rem;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Инициализируем игру
+    const game = new RouletteGame();
+    
+    // Делаем игру доступной глобально для отладки
+    window.rouletteGame = game;
+    
+    console.log('Рулетка инициализирована');
+});
+
+// Дополнительные утилиты
+function formatNumber(num) {
+    return new Intl.NumberFormat('ru-RU').format(num);
+}
+
+function getRandomColor() {
+    const colors = ['#ff4757', '#ffd700', '#00ff88', '#3742fa', '#f1c40f'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// Обработка ошибок WebSocket
+window.addEventListener('error', function(event) {
+    console.error('Ошибка приложения:', event.error);
+});
+
+// Обработка потери соединения
+window.addEventListener('offline', function() {
+    const game = window.rouletteGame;
+    if (game) {
+        game.showNotification('Соединение потеряно. Попробуйте обновить страницу.', 'error');
     }
 });
 
-// Дополнительные анимации CSS
-const additionalStyles = `
-@keyframes slideOutRight {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
+window.addEventListener('online', function() {
+    const game = window.rouletteGame;
+    if (game) {
+        game.showNotification('Соединение восстановлено', 'success');
+    }
+});
+
+// Предотвращение двойных кликов
+let lastClickTime = 0;
+document.addEventListener('click', function(event) {
+    const now = Date.now();
+    if (now - lastClickTime < 300) { // 300мс защита от двойного клика
+        if (event.target.classList.contains('color-bet') || 
+            event.target.classList.contains('bet-btn')) {
+            event.preventDefault();
+            return false;
+        }
+    }
+    lastClickTime = now;
+});
+
+// Автоматическое переподключение при потере соединения
+function attemptReconnect() {
+    const game = window.rouletteGame;
+    if (game && game.socket.disconnected) {
+        console.log('Попытка переподключения...');
+        game.socket.connect();
+        setTimeout(() => {
+            if (game.socket.disconnected) {
+                attemptReconnect();
+            }
+        }, 5000);
+    }
 }
 
-.game-result-popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.9);
-    padding: 2rem;
-    border-radius: 20px;
-    border: 3px solid;
-    z-index: 1500;
-    animation: resultPopup 3s ease;
+// Проверка соединения каждые 30 секунд
+setInterval(() => {
+    const game = window.rouletteGame;
+    if (game && game.socket.disconnected) {
+        attemptReconnect();
+    }
+}, 30000);
+
+// Функция для безопасного выполнения кода
+function safeExecute(fn, context = null) {
+    try {
+        return fn.call(context);
+    } catch (error) {
+        console.error('Ошибка выполнения:', error);
+        const game = window.rouletteGame;
+        if (game) {
+            game.showNotification('Произошла ошибка. Попробуйте еще раз.', 'error');
+        }
+        return null;
+    }
 }
 
-.game-result-popup.red {
-    border-color: #ff4757;
+// Экспорт для использования в других скриптах
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = RouletteGame;
 }
-
-.game-result-popup.black {
-    border-color: #2f3542;
-}
-
-.game-result-popup.green {
-    border-color: #00ff88;
-}
-
-@keyframes resultPopup {
-    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-}
-
-.result-content h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    text-align: center;
-}
-
-.result-color-indicator {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin: 0 auto;
-    border: 3px solid #fff;
-}
-
-.result-color-indicator.red {
-    background: #ff4757;
-}
-
-.result-color-indicator.black {
-    background: #2f3542;
-}
-
-.result-color-indicator.green {
-    background: #00ff88;
-}
-
-.active-bet {
-    animation: betPulse 2s infinite;
-}
-
-@keyframes betPulse {
-    0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
-    50% { box-shadow: 0 0 25px rgba(255, 215, 0, 1); }
-    100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
-}
-
-.notification {
-    max-width: 300px;
-    word-wrap: break-word;
-}
-`;
-
-// Добавляем дополнительные стили
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalStyles;
-document.head.appendChild(styleSheet);
