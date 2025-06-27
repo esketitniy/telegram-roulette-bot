@@ -235,36 +235,43 @@ class RouletteGame {
     }
 
     getColorAngles() {
-        // Углы для каждого цвета на колесе (15 секторов)
-        const sectorAngle = 360 / 15;
-        const angles = {};
-        
-        // Зелёный сектор (0)
-        angles.green = 0;
-        
-        // Красные и чёрные сектора чередуются
-        const colors = ['green', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black'];
-        
-        for (let i = 0; i < colors.length; i++) {
-            const angle = i * sectorAngle;
-            if (!angles[colors[i]]) {
-                angles[colors[i]] = [];
-            }
-            if (Array.isArray(angles[colors[i]])) {
-                angles[colors[i]].push(angle);
-            }
-        }
+    // Углы для 15 секторов (24 градуса на сектор)
+    const sectorAngle = 24;
+    const angles = {
+        'red': [0, 48, 120, 168, 240, 288, 336],      // красные сектора
+        'black': [24, 72, 144, 192, 216, 264, 312],   // черные сектора
+        'green': [96]                                  // зеленый сектор
+    };
+    
+    // Выбираем случайный угол из доступных для выпавшего цвета
+    return angles;
+}
 
-        // Выбираем случайный угол для каждого цвета
-        Object.keys(angles).forEach(color => {
-            if (Array.isArray(angles[color])) {
-                angles[color] = angles[color][Math.floor(Math.random() * angles[color].length)];
-            }
-        });
+spinRoulette(result) {
+    const wheel = document.getElementById('roulette-wheel');
+    if (!wheel) return;
 
-        return angles;
-    }
+    // Убираем предыдущие классы анимации
+    wheel.classList.remove('spinning');
 
+    // Рассчитываем угол поворота
+    const colorAngles = this.getColorAngles();
+    const availableAngles = colorAngles[result];
+    const targetAngle = availableAngles[Math.floor(Math.random() * availableAngles.length)];
+    const spins = 5; // Количество полных оборотов
+    const totalAngle = (360 * spins) + targetAngle + Math.random() * 10 - 5; // Добавляем небольшую случайность
+
+    // Устанавливаем CSS переменную для анимации
+    wheel.style.setProperty('--spin-degrees', `${totalAngle}deg`);
+
+    // Запускаем анимацию
+    setTimeout(() => {
+        wheel.classList.add('spinning');
+    }, 100);
+
+    this.spinAngle = totalAngle % 360;
+}
+    
     handleGameResult(data) {
         setTimeout(() => {
             this.updateHistory(data.history);
