@@ -1,19 +1,10 @@
 services:
   - type: web
-    name: roulette-app
+    name: roulette-game
     env: python
-    region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.16
-      - key: SECRET_KEY
-        generateValue: true
-      - key: FLASK_ENV
-        value: production
-    disk:
-      name: data
-      mountPath: /opt/render/project/src
-      sizeGB: 1
+        value: 3.11.0
