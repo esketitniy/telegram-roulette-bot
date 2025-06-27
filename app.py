@@ -5,7 +5,7 @@ from models import db, User, GameRound, Bet
 import random
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 # Создание приложения
@@ -62,7 +62,7 @@ ROULETTE_NUMBERS = {
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Маршруты
+# Основные маршруты
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
@@ -129,6 +129,7 @@ def profile():
                         .order_by(Bet.created_at.desc()).limit(20).all()
     return render_template('profile.html', user=current_user, bets=user_bets)
 
+# API маршруты
 @app.route('/api/place_bet', methods=['POST'])
 @login_required
 def place_bet():
@@ -181,10 +182,8 @@ def place_bet():
 def get_user_balance():
     return jsonify({'balance': current_user.balance})
 
-# Добавьте этот маршрут в app.py после существующих API маршрутов
-
 @app.route('/api/recent_results')
-def get_recent_results():
+def api_recent_results():
     try:
         # Получаем последние 10 завершенных раундов
         recent_rounds = GameRound.query.filter(
@@ -205,7 +204,6 @@ def get_recent_results():
         print(f"Ошибка получения результатов: {e}")
         return jsonify({'results': []})
 
-# Также добавьте API для статистики игрока
 @app.route('/api/player_stats')
 @login_required
 def get_player_stats():
@@ -360,7 +358,7 @@ def game_loop():
                 current_round.winning_number = winning_number
                 current_round.winning_color = winning_color
                 current_round.status = 'finished'
-                current_round.end_time = datetime.utcnow()
+                current_round.end_time = datetime.now(timezone.utc)  # ← ИСПРАВЛЕНИЕ
                 db.session.commit()
                 
                 process_bets(winning_number, winning_color)
@@ -419,5 +417,5 @@ if __name__ == '__main__':
         debug=debug_mode, 
         host='0.0.0.0', 
         port=port,
-        allow_unsafe_werkzeug=True  # ← ЭТО ИСПРАВЛЕНИЕ!
+        allow_unsafe_werkzeug=True
     )
