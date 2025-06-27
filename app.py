@@ -128,54 +128,60 @@ def process_bets(game_id, winning_color):
         db.session.rollback()
 
 def game_loop():
-    """Основной цикл игры"""
     global game_active
+    print("Игровой цикл запущен")
     
     while game_active:
         try:
-            # Фаза ставок (25 секунд)
-            current_game['state'] = 'betting'
-            current_game['game_id'] = generate_game_id()
-            current_game['bets'][current_game['game_id']] = {}
-            current_game['time_left'] = 25
-            
-            socketio.emit('game_state', {
-                'state': 'betting',
-                'time_left': 25,
-                'game_id': current_game['game_id']
-            })
-            
-            # Обратный отсчет ставок
-            for i in range(25, 0, -1):
+            # Создаем контекст приложения для каждой итерации
+            with app.app_context():
+                # Фаза ставок (25 секунд)
+                current_game['state'] = 'betting'
+                current_game['game_id'] = generate_game_id()
+                current_game['bets'][current_game['game_id']] = {}
+                current_game['time_left'] = 25
+                
+                print(f"Новая игра запущена: {current_game['game_id']}")
+                
+                socketio.emit('game_state', {
+                    'state': 'betting',
+                    'time_left': 25,
+                    'game_id': current_game['game_id']
+                }, broadcast=True)
+                
+                # Обратный отсчет ставок
+                for i in range(25, 0, -1):
+                    if not game_active:
+                        break
+                    current_game['time_left'] = i
+                    print(f"Время ставок: {i}")
+                    socketio.emit('betting_time', {'time_left': i}, broadcast=True)
+                    socketio.sleep(1)  # Используем socketio.sleep вместо time.sleep
+                
                 if not game_active:
                     break
-                current_game['time_left'] = i
-                socketio.emit('betting_time', {'time_left': i})
-                time.sleep(1)
-            
-            if not game_active:
-                break
                 
-            # Фаза вращения (10 секунд)
-            current_game['state'] = 'spinning'
-            winning_number, winning_color = spin_roulette()
-            current_game['winning_number'] = winning_number
-            current_game['winning_color'] = winning_color
-            
-            socketio.emit('game_state', {
-                'state': 'spinning',
-                'winning_number': winning_number,
-                'winning_color': winning_color
-            })
-            
-            # Анимация вращения
-            time.sleep(10)
-            
-            if not game_active:
-                break
-            
-            # Обработка результатов
-            with app.app_context():
+                # Фаза вращения (10 секунд)
+                current_game['state'] = 'spinning'
+                winning_number, winning_color = spin_roulette()
+                current_game['winning_number'] = winning_number
+                current_game['winning_color'] = winning_color
+                
+                print(f"Выпало: {winning_number} ({winning_color})")
+                
+                socketio.emit('game_state', {
+                    'state': 'spinning',
+                    'winning_number': winning_number,
+                    'winning_color': winning_color
+                }, broadcast=True)
+                
+                # Анимация вращения
+                socketio.sleep(10)
+                
+                if not game_active:
+                    break
+                
+                # Обработка результатов
                 process_bets(current_game['game_id'], winning_color)
                 
                 # Сохранение результата в историю
@@ -186,23 +192,23 @@ def game_loop():
                 )
                 db.session.add(game_result)
                 db.session.commit()
-            
-            # Отправка результатов
-            socketio.emit('game_result', {
-                'winning_number': winning_number,
-                'winning_color': winning_color,
-                'game_id': current_game['game_id']
-            })
-            
-            # Отправка обновленной истории
-            socketio.emit('history_update', {'history': get_last_results()})
-            
-            # Пауза перед следующей игрой
-            time.sleep(3)
-            
+                
+                # Отправка результатов
+                socketio.emit('game_result', {
+                    'winning_number': winning_number,
+                    'winning_color': winning_color,
+                    'game_id': current_game['game_id']
+                }, broadcast=True)
+                
+                # Отправка обновленной истории
+                socketio.emit('history_update', {'history': get_last_results()}, broadcast=True)
+                
+                # Пауза перед следующей игрой
+                socketio.sleep(3)
+                
         except Exception as e:
             print(f"Ошибка в игровом цикле: {str(e)}")
-            time.sleep(1)
+            socketio.sleep(5)
 
 # Маршруты
 @app.route('/')
@@ -398,12 +404,17 @@ def init_db():
     except Exception as e:
         print(f"Ошибка инициализации базы данных: {e}")
 
+def start_game_loop():
+    """Запуск игрового цикла в отдельном потоке"""
+    socketio.start_background_task(game_loop)
+
 if __name__ == '__main__':
-    init_db()
+    with app.app_context():
+        db.create_all()
+        print("База данных инициализирована")
     
-    # Запуск игрового цикла в отдельном потоке
-    game_thread = threading.Thread(target=game_loop, daemon=True)
-    game_thread.start()
+    # Запуск игрового цикла после инициализации
+    start_game_loop()
     
     # Настройка для продакшена
     port = int(os.environ.get('PORT', 5000))
@@ -411,11 +422,10 @@ if __name__ == '__main__':
     
     print(f"Запуск сервера на порту {port}")
     
-    # Используем eventlet для продакшена
     socketio.run(
-    app, 
-    host='0.0.0.0', 
-    port=port, 
-    debug=debug,
-    allow_unsafe_werkzeug=True
+        app, 
+        host='0.0.0.0', 
+        port=port, 
+        debug=debug,
+        allow_unsafe_werkzeug=True
     )
