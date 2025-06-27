@@ -54,41 +54,51 @@
     </div>
 
     <!-- Панель ставок -->
-    <div class="betting-panel">
-        <div class="bet-amount-selector">
-            <h4>Сумма ставки</h4>
-            <div class="amount-buttons">
-                <button class="amount-btn" data-amount="10">10₽</button>
-                <button class="amount-btn" data-amount="25">25₽</button>
-                <button class="amount-btn" data-amount="50">50₽</button>
-                <button class="amount-btn" data-amount="100">100₽</button>
-                <button class="amount-btn" data-amount="250">250₽</button>
-            </div>
-            <div class="custom-amount">
-                <input type="number" id="custom-amount" placeholder="Своя сумма" min="1" max="1000">
-            </div>
+<div class="betting-panel">
+    <div class="bet-amount-selector">
+        <h4><i class="fas fa-coins"></i> Выберите сумму ставки</h4>
+        <div class="amount-buttons">
+            <button class="amount-btn active" data-amount="10">10₽</button>
+            <button class="amount-btn" data-amount="25">25₽</button>
+            <button class="amount-btn" data-amount="50">50₽</button>
+            <button class="amount-btn" data-amount="100">100₽</button>
+            <button class="amount-btn" data-amount="250">250₽</button>
+            <button class="amount-btn" data-amount="500">500₽</button>
         </div>
-
-        <div class="betting-options">
-            <div class="bet-option red" data-bet="red">
-                <div class="bet-label">КРАСНОЕ</div>
-                <div class="bet-payout">x2</div>
-                <div class="bet-total" id="red-total">0₽</div>
-            </div>
-            
-            <div class="bet-option black" data-bet="black">
-                <div class="bet-label">ЧЁРНОЕ</div>
-                <div class="bet-payout">x2</div>
-                <div class="bet-total" id="black-total">0₽</div>
-            </div>
-            
-            <div class="bet-option green" data-bet="green">
-                <div class="bet-label">ЗЕЛЁНОЕ</div>
-                <div class="bet-payout">x35</div>
-                <div class="bet-total" id="green-total">0₽</div>
-            </div>
+        <div class="custom-amount">
+            <input 
+                type="number" 
+                id="custom-amount" 
+                placeholder="Своя сумма" 
+                min="1"
+                max="10000"
+            >
         </div>
     </div>
+    
+    <div class="betting-options">
+        <div class="bet-option red">
+            <div class="bet-label">КРАСНОЕ</div>
+            <div class="bet-payout">Выплата: x2</div>
+            <div class="bet-total" id="red-total">0₽</div>
+            <button class="bet-btn" data-bet="red">BET</button>
+        </div>
+        
+        <div class="bet-option black">
+            <div class="bet-label">ЧЕРНОЕ</div>
+            <div class="bet-payout">Выплата: x2</div>
+            <div class="bet-total" id="black-total">0₽</div>
+            <button class="bet-btn" data-bet="black">BET</button>
+        </div>
+        
+        <div class="bet-option green">
+            <div class="bet-label">ЗЕЛЕНОЕ</div>
+            <div class="bet-payout">Выплата: x35</div>
+            <div class="bet-total" id="green-total">0₽</div>
+            <button class="bet-btn" data-bet="green">BET</button>
+        </div>
+    </div>
+</div>
 
     <!-- Эффекты -->
     <div class="confetti" id="confetti"></div>
