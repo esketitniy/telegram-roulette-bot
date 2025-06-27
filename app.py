@@ -8,6 +8,8 @@ import threading
 from datetime import datetime, timedelta
 import os
 from config import config
+import secrets
+print(secrets.token_urlsafe(32))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
