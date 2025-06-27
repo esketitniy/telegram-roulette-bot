@@ -243,6 +243,10 @@ def place_bet():
     if 'user_id' not in session:
         return jsonify({'error': 'Не авторизован'}), 401
     
+    # Проверяем фазу игры
+    if game_state['phase'] != 'betting':
+        return jsonify({'error': 'Ставки закрыты. Дождитесь следующего раунда.'}), 400
+    
     data = request.json
     bet_type = data.get('bet_type')
     amount = int(data.get('amount', 0))
@@ -252,9 +256,6 @@ def place_bet():
     
     if amount < ROULETTE_CONFIG['min_bet']:
         return jsonify({'error': f'Минимальная ставка {ROULETTE_CONFIG["min_bet"]}'}), 400
-    
-    if game_state['phase'] != 'betting':
-        return jsonify({'error': 'Ставки не принимаются'}), 400
     
     # Проверка на существующую ставку
     user_key = f"user_{session['user_id']}"
@@ -289,7 +290,8 @@ def place_bet():
         'amount': amount
     })
     
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'message': 'Ставка принята!'})
+    
 @socketio.on('connect')
 def handle_connect():
     try:
