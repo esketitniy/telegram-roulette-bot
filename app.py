@@ -10,6 +10,16 @@ import hashlib
 from datetime import datetime, timedelta
 import os
 
+def safe_emit(event, data, room=None):
+    """Безопасная отправка сообщений через Socket.IO"""
+    try:
+        if room:
+            socketio.emit(event, data, room=room)
+        else:
+            socketio.emit(event, data)
+    except Exception as e:
+        print(f"Ошибка отправки {event}: {e}")
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 socketio = SocketIO(app, cors_allowed_origins="*")
