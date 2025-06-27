@@ -321,14 +321,17 @@ def profile():
 # WebSocket события
 @socketio.on('connect')
 def handle_connect():
+    print(f"Клиент подключился: {request.sid}")
     if 'user_id' in session:
         join_room('game_room')
+        # Отправляем текущее состояние игры
         emit('game_state', {
             'state': current_game['state'],
             'time_left': current_game['time_left'],
             'game_id': current_game['game_id']
         })
         emit('history_update', {'history': get_last_results()})
+        print(f"Пользователь {session.get('username')} подключился к игре")
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -395,14 +398,54 @@ def handle_bet(data):
         print(f"Bet error: {e}")
         
 
-# Инициализация базы данных
-def init_db():
-    try:
-        with app.app_context():
-            db.create_all()
-            print("База данных инициализирована")
-    except Exception as e:
-        print(f"Ошибка инициализации базы данных: {e}")
+// Инициализация WebSocket
+function initializeSocket() {
+    console.log('Инициализация WebSocket...');
+    socket = io();
+    
+    socket.on('connect', function() {
+        console.log('✅ Подключено к серверу');
+    });
+    
+    socket.on('disconnect', function() {
+        console.log('❌ Отключено от сервера');
+    });
+    
+    socket.on('game_state', function(data) {
+        console.log('🎮 Game state received:', data);
+        updateGameState(data);
+    });
+    
+    socket.on('betting_time', function(data) {
+        console.log('⏰ Betting time:', data.time_left);
+        updateTimer(data.time_left);
+    });
+    
+    socket.on('game_result', function(data) {
+        console.log('🎯 Game result:', data);
+        showGameResult(data);
+    });
+    
+    socket.on('history_update', function(data) {
+        console.log('📊 History update:', data);
+        updateHistory(data.history);
+    });
+    
+    socket.on('bet_placed', function(data) {
+        console.log('💰 Bet placed:', data);
+        updateUserBets(data);
+    });
+    
+    socket.on('bet_error', function(data) {
+        console.log('❌ Bet error:', data);
+        showError(data.message);
+    });
+    
+    // Проверка соединения
+    socket.on('connect_error', function(error) {
+        console.error('Ошибка подключения:', error);
+    });
+}
 
 def start_game_loop():
     """Запуск игрового цикла в отдельном потоке"""
