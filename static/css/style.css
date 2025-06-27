@@ -1,4 +1,3 @@
-/* Сброс стилей и базовые настройки */
 * {
     margin: 0;
     padding: 0;
@@ -6,312 +5,236 @@
 }
 
 body {
-    font-family: 'Roboto', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Orbitron', monospace;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: #ffffff;
     min-height: 100vh;
-    color: #fff;
+    overflow-x: hidden;
 }
 
 /* Навигация */
 .navbar {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.9);
     backdrop-filter: blur(10px);
-    padding: 1rem 0;
-    position: sticky;
+    border-bottom: 2px solid #ffd700;
+    position: fixed;
     top: 0;
+    width: 100%;
     z-index: 1000;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-container {
     max-width: 1200px;
     margin: 0 auto;
+    padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1rem;
 }
 
 .nav-logo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     font-size: 1.5rem;
-    font-weight: bold;
-    color: #fff;
-}
-
-.nav-logo i {
-    color: #ffd700;
-    font-size: 2rem;
+    font-weight: 900;
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .nav-menu {
     display: flex;
-    gap: 1rem;
+    gap: 2rem;
 }
 
 .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    color: #fff;
+    color: #ffffff;
     text-decoration: none;
-    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
     transition: all 0.3s ease;
-    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid transparent;
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
+    color: #000;
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+.nav-link.logout {
+    border-color: #ff4757;
+}
+
+.nav-link.logout:hover {
+    background: #ff4757;
+    color: #fff;
 }
 
 /* Основной контент */
 .main-content {
-    padding: 2rem 1rem;
+    margin-top: 80px;
+    padding: 2rem;
     max-width: 1200px;
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-/* Flash сообщения */
+/* Флеш сообщения */
 .flash-messages {
     margin-bottom: 2rem;
 }
 
 .flash-message {
-    background: rgba(255, 193, 7, 0.9);
-    color: #000;
+    background: rgba(255, 71, 87, 0.9);
+    color: white;
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 10px;
     margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    border: 1px solid #ff4757;
     animation: slideIn 0.5s ease;
 }
 
 @keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
-/* Игровой контейнер */
+/* Контейнер игры */
 .game-container {
     display: grid;
-    gap: 2rem;
     grid-template-columns: 1fr;
+    gap: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 /* Информационная панель */
 .info-panel {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 2px solid #ffd700;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    padding: 1.5rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .user-info {
     display: flex;
-    gap: 2rem;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-.balance, .username {
+.balance {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.1rem;
-    font-weight: 500;
+    font-size: 1.2rem;
+    font-weight: bold;
 }
 
-.balance i, .username i {
+.balance-amount {
     color: #ffd700;
+    font-size: 1.5rem;
 }
 
-/* Таймер */
-.game-timer {
-    position: relative;
+.user-name {
+    color: #00ff88;
+    font-size: 1rem;
+}
+
+.game-info {
+    text-align: center;
 }
 
 .timer-circle {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: conic-gradient(#ff6b6b 0deg, #ff6b6b 0deg, transparent 0deg);
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #000;
+    margin: 0 auto 0.5rem;
     animation: pulse 2s infinite;
 }
 
-.timer-circle::before {
-    content: '';
-    position: absolute;
-    inset: 4px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-}
-
-.timer-text {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    font-weight: bold;
-}
-
-#timer-value {
-    display: block;
-    font-size: 1.5rem;
-    color: #fff;
-}
-
-#timer-label {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.7);
-}
-
 @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
-    50% { box-shadow: 0 0 0 20px rgba(255, 107, 107, 0); }
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
-/* История результатов */
-.history-panel {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 1.5rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.history-panel h3 {
-    margin-bottom: 1rem;
-    text-align: center;
-}
-
-.history-numbers {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.history-number {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.phase-text {
+    font-size: 1rem;
+    color: #ffd700;
     font-weight: bold;
-    font-size: 0.9rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    animation: bounceIn 0.5s ease;
-}
-
-.history-number.red {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-    color: #fff;
-}
-
-.history-number.black {
-    background: linear-gradient(135deg, #2c3e50, #34495e);
-    color: #fff;
-}
-
-.history-number.green {
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
-    color: #fff;
-}
-
-@keyframes bounceIn {
-    0% {
-        opacity: 0;
-        transform: scale(0.3);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.05);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
 }
 
 /* Рулетка */
 .roulette-container {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
+    justify-content: center;
     padding: 2rem;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.roulette-wheel {
+.roulette-wheel-container {
     position: relative;
     width: 300px;
     height: 300px;
 }
 
-.wheel-inner {
+.roulette-wheel {
     width: 100%;
     height: 100%;
     border-radius: 50%;
+    border: 5px solid #ffd700;
     position: relative;
-    background: linear-gradient(45deg, #2c3e50, #34495e);
-    border: 8px solid #ffd700;
-    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
-    transition: transform 10s cubic-bezier(0.23, 1, 0.32, 1);
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
 }
 
-.wheel-number {
+.sector {
     position: absolute;
-    width: 100%;
-    height: 100%;
-    transform-origin: center center;
-}
-
-.wheel-number span {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #fff;
+    width: 50%;
+    height: 50%;
+    transform-origin: 100% 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 20px;
+    font-size: 1rem;
     font-weight: bold;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 2px 6px;
-    border-radius: 4px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
 }
 
-.wheel-number.red span {
-    background: rgba(255, 107, 107, 0.8);
-}
+.sector.red { background: #ff4757; }
+.sector.black { background: #2f3542; }
+.sector.green { background: #00ff88; color: #000; }
 
-.wheel-number.green span {
-    background: rgba(46, 204, 113, 0.8);
-}
+.sector:nth-child(1) { transform: rotate(0deg); }
+.sector:nth-child(2) { transform: rotate(24deg); }
+.sector:nth-child(3) { transform: rotate(48deg); }
+.sector:nth-child(4) { transform: rotate(72deg); }
+.sector:nth-child(5) { transform: rotate(96deg); }
+.sector:nth-child(6) { transform: rotate(120deg); }
+.sector:nth-child(7) { transform: rotate(144deg); }
+.sector:nth-child(8) { transform: rotate(168deg); }
+.sector:nth-child(9) { transform: rotate(192deg); }
+.sector:nth-child(10) { transform: rotate(216deg); }
+.sector:nth-child(11) { transform: rotate(240deg); }
+.sector:nth-child(12) { transform: rotate(264deg); }
+.sector:nth-child(13) { transform: rotate(288deg); }
+.sector:nth-child(14) { transform: rotate(312deg); }
+.sector:nth-child(15) { transform: rotate(336deg); }
 
-.wheel-pointer {
+.roulette-pointer {
     position: absolute;
     top: -10px;
     left: 50%;
@@ -324,230 +247,747 @@ body {
     z-index: 10;
 }
 
-.game-status {
-    text-align: center;
-    padding: 1rem 2rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+.spinning {
+    animation: spin 10s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.status-text {
-    font-size: 1.2rem;
-    font-weight: 500;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(var(--spin-degrees)); }
 }
 
-/* Панель ставок */
-.betting-panel {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 2rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+/* История */
+.history-container {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 2px solid #ffd700;
 }
 
-.bet-amount-selector h4 {
+.history-container h3 {
+    color: #ffd700;
     margin-bottom: 1rem;
     text-align: center;
 }
 
-.amount-buttons {
+.history-items {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
     flex-wrap: wrap;
+}
+
+.history-item {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid #ffd700;
+}
+
+.history-item.red {
+    background: #ff4757;
+    color: white;
+}
+
+.history-item.black {
+    background: #2f3542;
+    color: white;
+}
+
+.history-item.green {
+    background: #00ff88;
+    color: #000;
+}
+
+.history-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* Панель ставок */
+.betting-panel {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 2px solid #ffd700;
+    backdrop-filter: blur(10px);
+}
+
+.bet-input-container {
+    margin-bottom: 1.5rem;
+}
+
+#bet-amount {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.2rem;
+    border: 2px solid #ffd700;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    text-align: center;
+    font-family: 'Orbitron', monospace;
     margin-bottom: 1rem;
 }
 
-.amount-btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+#bet-amount:focus {
+    outline: none;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
-.amount-btn:hover, .amount-btn.active {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: #ffd700;
-    transform: translateY(-2px);
-}
-
-.custom-amount {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-#custom-amount {
-    padding: 0.75rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    text-align: center;
-    font-size: 1rem;
-    width: 150px;
-}
-
-#custom-amount::placeholder {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-/* Опции ставок */
-.betting-options {
+.bet-buttons {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.bet-btn {
+    padding: 0.8rem;
+    border: 2px solid #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+    color: #ffd700;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.bet-btn:hover {
+    background: #ffd700;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+.color-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
 }
 
-.bet-option {
-    padding: 2rem 1rem;
-    border-radius: 16px;
-    text-align: center;
+.color-bet {
+    padding: 1.5rem;
+    border: none;
+    border-radius: 15px;
     cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
     transition: all 0.3s ease;
-    border: 3px solid transparent;
     position: relative;
     overflow: hidden;
 }
 
-.bet-option::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
-}
-
-.bet-option:hover::before {
-    left: 100%;
-}
-
-.bet-option.red {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-    box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3);
-}
-
-.bet-option.black {
-    background: linear-gradient(135deg, #2c3e50, #34495e);
-    box-shadow: 0 8px 32px rgba(44, 62, 80, 0.3);
-}
-
-.bet-option.green {
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
-    box-shadow: 0 8px 32px rgba(46, 204, 113, 0.3);
-}
-
-.bet-option:hover {
+.color-bet:hover {
     transform: translateY(-5px);
-    border-color: #ffd700;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
-.bet-option.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
+.color-bet:active {
+    transform: translateY(-2px);
+}
+
+.color-bet.red {
+    background: linear-gradient(45deg, #ff4757, #ff6b7d);
+    color: white;
+}
+
+.color-bet.black {
+    background: linear-gradient(45deg, #2f3542, #57606f);
+    color: white;
+}
+
+.color-bet.green {
+    background: linear-gradient(45deg, #00ff88, #00d26a);
+    color: #000;
 }
 
 .bet-label {
-    font-size: 1.2rem;
-    font-weight: bold;
+    display: block;
     margin-bottom: 0.5rem;
 }
 
-.bet-payout {
-    font-size: 1rem;
+.multiplier {
+    display: block;
+    font-size: 1.2rem;
     opacity: 0.8;
+}
+
+/* Ставки игроков */
+.players-bets {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 2px solid #ffd700;
+}
+
+.players-bets h3 {
+    color: #ffd700;
     margin-bottom: 1rem;
+    text-align: center;
 }
 
-.bet-total {
-    font-size: 1.1rem;
-    font-weight: bold;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 0.5rem;
+.bets-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.player-bet {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.8rem;
     border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideInRight 0.5s ease;
 }
 
-/* Эффекты выигрыша */
-.win-overlay {
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.bet-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.bet-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.bet-color.red { background: #ff4757; }
+.bet-color.black { background: #2f3542; }
+.bet-color.green { background: #00ff88; }
+
+.bet-amount {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+/* Модальные окна */
+.modal {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
+    z-index: 2000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: center;
+    border: 3px solid;
+    animation: modalAppear 0.5s ease;
+}
+
+@keyframes modalAppear {
+    from { 
+        opacity: 0; 
+        transform: translate(-50%, -60%) scale(0.8); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translate(-50%, -50%) scale(1); 
+    }
+}
+
+.modal-content.win {
+    border-color: #00ff88;
+}
+
+.modal-content.lose {
+    border-color: #ff4757;
+}
+
+.modal-content h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.modal-content.win h2 {
+    color: #00ff88;
+}
+
+.modal-content.lose h2 {
+    color: #ff4757;
+}
+
+.btn-close {
+    background: #ffd700;
+    color: #000;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    margin-top: 1rem;
     transition: all 0.3s ease;
 }
 
-.win-overlay.show {
-    opacity: 1;
-    visibility: visible;
+.btn-close:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
 }
 
-.win-message {
-    text-align: center;
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
-    padding: 3rem;
+/* Страницы авторизации */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 80px);
+    padding: 2rem;
+}
+
+.auth-form {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 2rem;
     border-radius: 20px;
-    border: 4px solid #ffd700;
-    animation: winPulse 1s ease-in-out infinite alternate;
+    border: 2px solid #ffd700;
+    backdrop-filter: blur(10px);
+    width: 100%;
+    max-width: 400px;
 }
 
-.win-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
+.auth-form h2 {
+    color: #ffd700;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 2rem;
 }
 
-.win-text {
-    font-size: 2.5rem;
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    color: #ffd700;
+    margin-bottom: 0.5rem;
     font-weight: bold;
-    margin-bottom: 1rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #ffd700;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.form-group.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-group.checkbox input {
+    width: auto;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(45deg, #ffd700, #ffed4a);
+    color: #000;
+    border: none;
+    border-radius: 25px;
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
+}
+
+.auth-link {
+    text-align: center;
+    margin-top: 1rem;
+    color: #ccc;
+}
+
+.auth-link a {
+    color: #ffd700;
+    text-decoration: none;
+}
+
+.auth-link a:hover {
+    text-decoration: underline;
+}
+
+/* Профиль */
+.profile-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.profile-header {
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 2px solid #ffd700;
+    margin-bottom: 2rem;
+}
+
+.profile-header h2 {
+    color: #ffd700;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 2rem;
+}
+
+.user-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 15px;
+    text-align: center;
+    border: 2px solid #ffd700;
+}
+
+.stat-card h3 {
+    font-size: 2rem;
+    color: #ffd700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card p {
+    color: #ccc;
+    font-size: 1rem;
+}
+
+.profile-content {
+    display: grid;
+    gap: 2rem;
+}
+
+.statistics {
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 2px solid #ffd700;
+}
+
+.statistics h3 {
+    color: #ffd700;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    border: 1px solid #ffd700;
+}
+
+.stat-label {
+    color: #ccc;
+}
+
+.stat-value {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.stat-value.positive {
+    color: #00ff88;
+}
+
+.stat-value.negative {
+    color: #ff4757;
+}
+
+.bet-history {
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 2px solid #ffd700;
+}
+
+.bet-history h3 {
+    color: #ffd700;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.history-table-container {
+    overflow-x: auto;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Orbitron', monospace;
+}
+
+.history-table th,
+.history-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #ffd700;
+}
+
+.history-table th {
+    background: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.history-table tr.win-row {
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.history-table tr.lose-row {
+    background: rgba(255, 71, 87, 0.1);
+}
+
+.bet-type {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.bet-type.red {
+    background: #ff4757;
+    color: white;
+}
+
+.bet-type.black {
+    background: #2f3542;
+    color: white;
+}
+
+.bet-type.green {
+    background: #00ff88;
+    color: #000;
+}
+
+.result-color {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.result-color.red {
+    background: #ff4757;
+    color: white;
+}
+
+.result-color.black {
+    background: #2f3542;
+    color: white;
+}
+
+.result-color.green {
+    background: #00ff88;
+    color: #000;
 }
 
 .win-amount {
-    font-size: 2rem;
+    color: #00ff88;
     font-weight: bold;
-    color: #ffd700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes winPulse {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.05); }
+.lose-amount {
+    color: #ff4757;
+    font-weight: bold;
 }
 
-/* Конфетти */
+/* Адаптивность */
+@media (max-width: 768px) {
+    .nav-container {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .nav-menu {
+        gap: 1rem;
+    }
+    
+    .main-content {
+        padding: 1rem;
+        margin-top: 120px;
+    }
+    
+    .info-panel {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .roulette-wheel-container {
+        width: 250px;
+        height: 250px;
+    }
+    
+    .color-buttons {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .bet-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .user-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .timer-circle {
+        width: 60px;
+        height: 60px;
+        font-size: 1.2rem;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+        width: calc(100% - 2rem);
+    }
+    
+    .history-table {
+        font-size: 0.8rem;
+    }
+    
+    .history-table th,
+    .history-table td {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-logo {
+        font-size: 1.2rem;
+    }
+    
+    .roulette-wheel-container {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .sector {
+        font-size: 0.8rem;
+        padding-top: 15px;
+    }
+    
+    .user-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .history-items {
+        gap: 0.3rem;
+    }
+    
+    .history-item {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .history-color {
+        width: 15px;
+        height: 15px;
+    }
+}
+
+/* Скрытие скроллбара */
+.bets-container::-webkit-scrollbar,
+.history-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.bets-container::-webkit-scrollbar-track,
+.history-table-container::-webkit-scrollbar-track {
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 10px;
+}
+
+.bets-container::-webkit-scrollbar-thumb,
+.history-table-container::-webkit-scrollbar-thumb {
+    background: #ffd700;
+    border-radius: 10px;
+}
+
+.bets-container::-webkit-scrollbar-thumb:hover,
+.history-table-container::-webkit-scrollbar-thumb:hover {
+    background: #ffed4a;
+}
+
+/* Анимации загрузки */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.pulse-animation {
+    animation: pulse 1s infinite;
+}
+
+/* Эффекты частиц для выигрыша */
 .confetti {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 9998;
-}
-
-.confetti-piece {
-    position: absolute;
     width: 10px;
     height: 10px;
     background: #ffd700;
     animation: confetti-fall 3s linear infinite;
+    z-index: 1500;
 }
 
 @keyframes confetti-fall {
@@ -561,516 +1001,12 @@ body {
     }
 }
 
-/* Страницы авторизации */
-.auth-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 80vh;
-    padding: 2rem;
+.confetti:nth-child(odd) {
+    background: #ff4757;
+    animation-delay: 0.5s;
 }
 
-.auth-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    padding: 3rem;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    max-width: 400px;
-}
-
-.auth-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.auth-header h2 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.auth-header p {
-    opacity: 0.8;
-}
-
-.auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group label {
-    font-weight: 500;
-    color: #fff;
-}
-
-.form-group input {
-    padding: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #ffd700;
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.form-group input::placeholder {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-.checkbox-group {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.checkbox-label input[type="checkbox"] {
-    width: auto;
-    margin: 0;
-}
-
-.auth-btn {
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #000;
-    font-size: 1.1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.auth-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
-}
-
-.auth-footer {
-    text-align: center;
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.auth-footer a {
-    color: #ffd700;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.auth-footer a:hover {
-    text-decoration: underline;
-}
-
-/* Профиль */
-.profile-container {
-    max-width: 1000px;
-    margin: 0 auto;
-}
-
-.profile-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 2rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin-bottom: 2rem;
-}
-
-.profile-info {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.profile-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: #000;
-}
-
-.profile-details h2 {
-    margin-bottom: 0.5rem;
-    font-size: 1.8rem;
-}
-
-.profile-details p {
-    opacity: 0.8;
-    margin-bottom: 0.25rem;
-}
-
-.balance-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.balance-card i {
-    font-size: 2rem;
-    color: #ffd700;
-}
-
-.balance-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.balance-label {
-    opacity: 0.8;
-    font-size: 0.9rem;
-}
-
-.balance-amount {
-    font-size: 1.5rem;
-    font-weight: bold;
-}
-
-/* Статистика */
-.profile-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 1.5rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.stat-card i {
-    font-size: 2rem;
-    color: #ffd700;
-}
-
-.stat-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-value {
-    font-size: 1.8rem;
-    font-weight: bold;
-}
-
-.stat-label {
-    opacity: 0.8;
-    font-size: 0.9rem;
-}
-
-/* История ставок */
-.bet-history {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 2rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.bet-history h3 {
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-.history-table {
-    overflow-x: auto;
-}
-
-.table-header, .table-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 8px;
-    align-items: center;
-}
-
-.table-header {
-    background: rgba(255, 255, 255, 0.2);
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-}
-
-.table-row {
-    background: rgba(255, 255, 255, 0.1);
-    margin-bottom: 0.5rem;
-    transition: all 0.3s ease;
-}
-
-.table-row:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateX(5px);
-}
-
-.table-row.win {
-    border-left: 4px solid #2ecc71;
-}
-
-.table-row.lose {
-    border-left: 4px solid #e74c3c;
-}
-
-.bet-type {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    text-transform: uppercase;
-}
-
-.bet-type.red {
-    background: #ff6b6b;
-    color: #fff;
-}
-
-.bet-type.black {
-    background: #2c3e50;
-    color: #fff;
-}
-
-.bet-type.green {
-    background: #2ecc71;
-    color: #fff;
-}
-
-.result.win {
-    color: #2ecc71;
-}
-
-.result.lose {
-    color: #e74c3c;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .nav-container {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .nav-menu {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .nav-link span {
-        display: none;
-    }
-    
-    .info-panel {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-    
-    .user-info {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .roulette-wheel {
-        width: 250px;
-        height: 250px;
-    }
-    
-    .betting-options {
-        grid-template-columns: 1fr;
-    }
-    
-    .amount-buttons {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .profile-header {
-        flex-direction: column;
-        gap: 1.5rem;
-        text-align: center;
-    }
-    
-    .profile-info {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .profile-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .table-header, .table-row {
-        grid-template-columns: repeat(5, minmax(80px, 1fr));
-        font-size: 0.8rem;
-    }
-    
-    .auth-card {
-        padding: 2rem;
-        margin: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .main-content {
-        padding: 1rem 0.5rem;
-    }
-    
-    .roulette-wheel {
-        width: 200px;
-        height: 200px;
-    }
-    
-    .timer-circle {
-        width: 60px;
-        height: 60px;
-    }
-    
-    #timer-value {
-        font-size: 1.2rem;
-    }
-    
-    .history-numbers {
-        gap: 0.25rem;
-    }
-    
-    .history-number {
-        width: 30px;
-        height: 30px;
-        font-size: 0.8rem;
-    }
-    
-    .amount-buttons {
-        flex-direction: column;
-    }
-    
-    .win-message {
-        padding: 2rem;
-        margin: 1rem;
-    }
-    
-    .win-text {
-        font-size: 2rem;
-    }
-    
-    .win-amount {
-        font-size: 1.5rem;
-    }
-}
-
-/* Анимации загрузки */
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.spinner {
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid #ffd700;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 1rem auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Скрытие элементов */
-.hidden {
-    display: none !important;
-}
-
-.invisible {
-    opacity: 0;
-    visibility: hidden;
-}
-
-/* Кнопки ставок */
-.bet-btn {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: none;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #000;
-    font-weight: bold;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin-top: 0.5rem;
-    text-transform: uppercase;
-}
-
-.bet-btn:hover:not(:disabled) {
-    background: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.bet-btn:disabled {
-    background: rgba(255, 255, 255, 0.5);
-    cursor: not-allowed;
-    transform: none;
-}
-
-.bet-btn:active {
-    transform: translateY(0);
-}
-
-/* Поле для ввода суммы */
-#custom-amount {
-    width: 100%;
-    max-width: 200px;
-    margin: 0 auto;
-    display: block;
+.confetti:nth-child(even) {
+    background: #00ff88;
+    animation-delay: 1s;
 }
