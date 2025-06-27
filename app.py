@@ -22,10 +22,12 @@ def safe_emit(event, data, room=None):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
-socketio = SocketIO(app, cors_allowed_origins="*", 
-                   transport=['websocket'], 
-                   ping_timeout=60, 
-                   ping_interval=25)
+socketio = SocketIO(app, 
+                   cors_allowed_origins="*",
+                   logger=False,
+                   engineio_logger=False,
+                   async_mode='threading',
+                   manage_session=False)
 
 # Глобальные переменные для игры
 game_state = {
@@ -315,6 +317,19 @@ def handle_disconnect():
             leave_room('game')
     except Exception as e:
         print(f"Ошибка отключения: {e}")
+
+@socketio.on_error_default
+def default_error_handler(e):
+    print(f"Socket.IO error: {e}")
+    pass
+
+@socketio.on('connect')
+def handle_connect():
+    print(f'Клиент подключился: {request.sid}')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f'Клиент отключился: {request.sid}')
         
 def game_loop():
     """Основной цикл игры"""
@@ -419,6 +434,7 @@ def process_results():
         'history': game_state['history'][-10:]
     })
 
+    
 if __name__ == '__main__':
     init_db()
     
