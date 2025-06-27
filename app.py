@@ -7,14 +7,34 @@ import random
 import threading
 import time
 import os
+import signal
+import atexit
 
+# Создание приложения
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///roulette.db')
+
+# Конфигурация
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+
+# База данных
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///roulette.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# SocketIO с настройками для продакшена
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*",
+    ping_timeout=60,
+    ping_interval=25,
+    logger=False,
+    engineio_logger=False
+)
 
 # Модели базы данных
 class User(db.Model):
@@ -29,9 +49,9 @@ class Bet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     game_id = db.Column(db.String(50), nullable=False)
-    bet_type = db.Column(db.String(20), nullable=False)  # 'red', 'black', 'green'
+    bet_type = db.Column(db.String(20), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    result = db.Column(db.String(20))  # 'win', 'lose'
+    result = db.Column(db.String(20))
     payout = db.Column(db.Float, default=0.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -51,15 +71,11 @@ ROULETTE_NUMBERS = {
     31: 'black', 32: 'red', 33: 'black', 34: 'red', 35: 'black', 36: 'red'
 }
 
-PAYOUT_MULTIPLIERS = {
-    'red': 2.0,
-    'black': 2.0,
-    'green': 35.0
-}
+PAYOUT_MULTIPLIERS = {'red': 2.0, 'black': 2.0, 'green': 35.0}
 
 # Глобальные переменные для игры
 current_game = {
-    'state': 'betting',  # 'betting', 'spinning', 'finished'
+    'state': 'betting',
     'game_id': None,
     'bets': {},
     'time_left': 25,
@@ -73,7 +89,6 @@ def generate_game_id():
     return f"game_{int(time.time())}_{random.randint(1000, 9999)}"
 
 def get_last_results(limit=10):
-    """Получить последние результаты игр"""
     try:
         results = GameHistory.query.order_by(GameHistory.created_at.desc()).limit(limit).all()
         return [{'number': r.winning_number, 'color': r.winning_color} for r in results]
@@ -82,13 +97,11 @@ def get_last_results(limit=10):
         return []
 
 def spin_roulette():
-    """Запуск рулетки и определение выигрышного числа"""
     winning_number = random.randint(0, 36)
     winning_color = ROULETTE_NUMBERS[winning_number]
     return winning_number, winning_color
 
 def process_bets(game_id, winning_color):
-    """Обработка ставок после спина"""
     try:
         if game_id not in current_game['bets']:
             return
@@ -102,7 +115,6 @@ def process_bets(game_id, winning_color):
                 bet_type = bet_info['type']
                 amount = bet_info['amount']
                 
-                # Определение результата
                 if bet_type == winning_color:
                     result = 'win'
                     payout = amount * PAYOUT_MULTIPLIERS[bet_type]
@@ -111,7 +123,6 @@ def process_bets(game_id, winning_color):
                     result = 'lose'
                     payout = 0
                 
-                # Сохранение ставки в базу
                 bet = Bet(
                     user_id=user_id,
                     game_id=game_id,
@@ -129,7 +140,7 @@ def process_bets(game_id, winning_color):
 
 def game_loop():
     global game_active
-    print("Игровой цикл запущен")
+    print("🎮 Игровой цикл запущен")
     
     while game_active:
         try:
@@ -141,7 +152,7 @@ def game_loop():
                 current_game['bets'][current_game['game_id']] = {}
                 current_game['time_left'] = 25
                 
-                print(f"Новая игра запущена: {current_game['game_id']}")
+                print(f"🎯 Новая игра запущена: {current_game['game_id']}")
                 
                 socketio.emit('game_state', {
                     'state': 'betting',
@@ -154,9 +165,9 @@ def game_loop():
                     if not game_active:
                         break
                     current_game['time_left'] = i
-                    print(f"Время ставок: {i}")
+                    print(f"⏰ Время ставок: {i}")
                     socketio.emit('betting_time', {'time_left': i}, broadcast=True)
-                    socketio.sleep(1)  # Используем socketio.sleep вместо time.sleep
+                    socketio.sleep(1)
                 
                 if not game_active:
                     break
@@ -167,7 +178,7 @@ def game_loop():
                 current_game['winning_number'] = winning_number
                 current_game['winning_color'] = winning_color
                 
-                print(f"Выпало: {winning_number} ({winning_color})")
+                print(f"🎲 Выпало: {winning_number} ({winning_color})")
                 
                 socketio.emit('game_state', {
                     'state': 'spinning',
@@ -185,13 +196,17 @@ def game_loop():
                 process_bets(current_game['game_id'], winning_color)
                 
                 # Сохранение результата в историю
-                game_result = GameHistory(
-                    game_id=current_game['game_id'],
-                    winning_number=winning_number,
-                    winning_color=winning_color
-                )
-                db.session.add(game_result)
-                db.session.commit()
+                try:
+                    game_result = GameHistory(
+                        game_id=current_game['game_id'],
+                        winning_number=winning_number,
+                        winning_color=winning_color
+                    )
+                    db.session.add(game_result)
+                    db.session.commit()
+                except Exception as e:
+                    print(f"Ошибка сохранения истории: {e}")
+                    db.session.rollback()
                 
                 # Отправка результатов
                 socketio.emit('game_result', {
@@ -207,7 +222,7 @@ def game_loop():
                 socketio.sleep(3)
                 
         except Exception as e:
-            print(f"Ошибка в игровом цикле: {str(e)}")
+            print(f"❌ Ошибка в игровом цикле: {str(e)}")
             socketio.sleep(5)
 
 # Маршруты
@@ -222,7 +237,6 @@ def index():
         return redirect(url_for('login'))
         
     history = get_last_results()
-    
     return render_template('index.html', user=user, history=history)
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -232,7 +246,6 @@ def register():
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
         
-        # Валидация
         if not username or not email or not password:
             flash('Все поля обязательны для заполнения')
             return render_template('register.html')
@@ -241,7 +254,6 @@ def register():
             flash('Пароль должен содержать минимум 6 символов')
             return render_template('register.html')
         
-        # Проверка существования пользователя
         if User.query.filter_by(username=username).first():
             flash('Пользователь с таким именем уже существует')
             return render_template('register.html')
@@ -250,7 +262,6 @@ def register():
             flash('Пользователь с таким email уже существует')
             return render_template('register.html')
         
-        # Создание нового пользователя
         try:
             user = User(
                 username=username,
@@ -315,13 +326,12 @@ def profile():
         return redirect(url_for('login'))
         
     bets = Bet.query.filter_by(user_id=user.id).order_by(Bet.created_at.desc()).limit(50).all()
-    
     return render_template('profile.html', user=user, bets=bets)
 
 # WebSocket события
 @socketio.on('connect')
 def handle_connect():
-    print(f"Клиент подключился: {request.sid}")
+    print(f"👤 Клиент подключился: {request.sid}")
     if 'user_id' in session:
         join_room('game_room')
         # Отправляем текущее состояние игры
@@ -331,10 +341,11 @@ def handle_connect():
             'game_id': current_game['game_id']
         })
         emit('history_update', {'history': get_last_results()})
-        print(f"Пользователь {session.get('username')} подключился к игре")
+        print(f"🎮 Пользователь {session.get('username')} подключился к игре")
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    print(f"👤 Клиент отключился: {request.sid}")
     if 'user_id' in session:
         leave_room('game_room')
 
@@ -390,71 +401,105 @@ def handle_bet(data):
             'balance': user.balance
         })
         
-        print(f"Ставка размещена: {user.username} - {bet_type} - {amount}")
+        print(f"💰 Ставка размещена: {user.username} - {bet_type} - {amount}")
         
     except Exception as e:
         db.session.rollback()
         emit('bet_error', {'message': 'Ошибка при размещении ставки'})
-        print(f"Bet error: {e}")
-        
+        print(f"❌ Bet error: {e}")
 
-# Инициализация WebSocket
-function initializeSocket() {
-    console.log('Инициализация WebSocket...');
-    socket = io();
-    
-    socket.on('connect', function() {
-        console.log('✅ Подключено к серверу');
-    });
-    
-    socket.on('disconnect', function() {
-        console.log('❌ Отключено от сервера');
-    });
-    
-    socket.on('game_state', function(data) {
-        console.log('🎮 Game state received:', data);
-        updateGameState(data);
-    });
-    
-    socket.on('betting_time', function(data) {
-        console.log('⏰ Betting time:', data.time_left);
-        updateTimer(data.time_left);
-    });
-    
-    socket.on('game_result', function(data) {
-        console.log('🎯 Game result:', data);
-        showGameResult(data);
-    });
-    
-    socket.on('history_update', function(data) {
-        console.log('📊 History update:', data);
-        updateHistory(data.history);
-    });
-    
-    socket.on('bet_placed', function(data) {
-        console.log('💰 Bet placed:', data);
-        updateUserBets(data);
-    });
-    
-    socket.on('bet_error', function(data) {
-        console.log('❌ Bet error:', data);
-        showError(data.message);
-    });
-    
-    // Проверка соединения
-    socket.on('connect_error', function(error) {
-        console.error('Ошибка подключения:', error);
-    });
-}
-
+# Функция запуска игрового цикла
 def start_game_loop():
     """Запуск игрового цикла в отдельном потоке"""
+    print("🚀 Запуск игрового цикла...")
     socketio.start_background_task(game_loop)
 
+# Обработчик завершения работы
+def cleanup():
+    global game_active
+    game_active = False
+    print("🛑 Игровой цикл остановлен")
+
+# Регистрация обработчиков сигналов
+signal.signal(signal.SIGINT, lambda s, f: cleanup())
+signal.signal(signal.SIGTERM, lambda s, f: cleanup())
+atexit.register(cleanup)
+
+# Инициализация базы данных
+def init_db():
+    try:
+        with app.app_context():
+            db.create_all()
+            print("📊 База данных инициализирована")
+            
+            # Проверяем, есть ли записи в истории
+            history_count = GameHistory.query.count()
+            print(f"📈 Записей в истории: {history_count}")
+            
+            # Создаем тестовые записи если их нет
+            if history_count == 0:
+                test_results = [
+                    {'number': 7, 'color': 'red'},
+                    {'number': 0, 'color': 'green'},
+                    {'number': 22, 'color': 'black'},
+                    {'number': 14, 'color': 'red'},
+                    {'number': 31, 'color': 'black'}
+                ]
+                
+                for i, result in enumerate(test_results):
+                    game_history = GameHistory(
+                        game_id=f"test_game_{i}",
+                        winning_number=result['number'],
+                        winning_color=result['color']
+                    )
+                    db.session.add(game_history)
+                
+                db.session.commit()
+                print("🎲 Добавлены тестовые результаты")
+                
+    except Exception as e:
+        print(f"❌ Ошибка инициализации базы данных: {e}")
+
+# Проверка состояния приложения
+@app.route('/health')
+def health_check():
+    return jsonify({
+        'status': 'ok',
+        'game_active': game_active,
+        'current_state': current_game['state'],
+        'time_left': current_game['time_left']
+    })
+
+# API для получения статистики
+@app.route('/api/stats')
+def get_stats():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        total_games = GameHistory.query.count()
+        user_bets = Bet.query.filter_by(user_id=session['user_id']).count()
+        
+        # Статистика по цветам
+        red_count = GameHistory.query.filter_by(winning_color='red').count()
+        black_count = GameHistory.query.filter_by(winning_color='black').count()
+        green_count = GameHistory.query.filter_by(winning_color='green').count()
+        
+        return jsonify({
+            'total_games': total_games,
+            'user_bets': user_bets,
+            'color_stats': {
+                'red': red_count,
+                'black': black_count,
+                'green': green_count
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        print("База данных инициализирована")
+    # Инициализация базы данных
+    init_db()
     
     # Запуск игрового цикла после инициализации
     start_game_loop()
@@ -463,7 +508,8 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'
     
-    print(f"Запуск сервера на порту {port}")
+    print(f"🌐 Запуск сервера на порту {port}")
+    print(f"🔧 Debug режим: {debug}")
     
     socketio.run(
         app, 
