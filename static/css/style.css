@@ -1118,3 +1118,304 @@ body {
         padding: 1rem;
     }
 }
+
+/* Стили для страницы профиля */
+.profile-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: var(--bg-color);
+    min-height: 100vh;
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--card-bg), rgba(233, 69, 96, 0.1));
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-header h1 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    font-size: 2.5rem;
+}
+
+.profile-info h2 {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    font-size: 2rem;
+}
+
+.balance {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.balance-amount {
+    color: var(--green-color);
+    font-weight: bold;
+    font-size: 1.4rem;
+}
+
+.join-date {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.profile-content {
+    display: grid;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.stats-section, .history-section {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-section h3, .history-section h3 {
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--green-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+
+.bets-table {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr 1.2fr;
+    background: rgba(233, 69, 96, 0.2);
+    padding: 1rem;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.table-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr 1.2fr;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+.table-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.table-row.winning {
+    background: rgba(76, 175, 80, 0.1);
+    border-left: 3px solid var(--green-color);
+}
+
+.table-row.losing {
+    background: rgba(244, 67, 54, 0.1);
+    border-left: 3px solid var(--red-color);
+}
+
+.table-row .col {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.bet-type {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.bet-type.bet-red {
+    background: rgba(244, 67, 54, 0.2);
+    color: var(--red-color);
+}
+
+.bet-type.bet-black {
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+}
+
+.bet-type.bet-green {
+    background: rgba(76, 175, 80, 0.2);
+    color: var(--green-color);
+}
+
+.win-amount {
+    color: var(--green-color);
+    font-weight: bold;
+}
+
+.loss-amount {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.status-win {
+    color: var(--green-color);
+    font-size: 0.8rem;
+}
+
+.status-loss {
+    color: var(--red-color);
+    font-size: 0.8rem;
+}
+
+.no-bets {
+    text-align: center;
+    padding: 3rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.no-bets a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.no-bets a:hover {
+    text-decoration: underline;
+}
+
+.profile-nav {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.nav-btn {
+    padding: 1rem 2rem;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-btn.primary {
+    background: linear-gradient(135deg, var(--accent-color), #ff4757);
+    color: white;
+}
+
+.nav-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+}
+
+.nav-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nav-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Адаптивность для профиля */
+@media (max-width: 768px) {
+    .profile-container {
+        padding: 1rem;
+    }
+    
+    .profile-header h1 {
+        font-size: 2rem;
+    }
+    
+    .profile-info h2 {
+        font-size: 1.5rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .table-header,
+    .table-row {
+        grid-template-columns: 1fr 1fr 1fr;
+        font-size: 0.8rem;
+    }
+    
+    .table-header .col:nth-child(n+4),
+    .table-row .col:nth-child(n+4) {
+        display: none;
+    }
+    
+    .profile-nav {
+        flex-direction: column;
+    }
+    
+    .nav-btn {
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-header,
+    .table-row {
+        grid-template-columns: 1fr 1fr;
+        padding: 0.5rem;
+    }
+    
+    .table-header .col:nth-child(n+3),
+    .table-row .col:nth-child(n+3) {
+        display: none;
+    }
+                           }
