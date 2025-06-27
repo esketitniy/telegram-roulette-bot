@@ -381,10 +381,13 @@ def handle_bet(data):
             'balance': user.balance
         })
         
+        print(f"Ставка размещена: {user.username} - {bet_type} - {amount}")
+        
     except Exception as e:
         db.session.rollback()
         emit('bet_error', {'message': 'Ошибка при размещении ставки'})
         print(f"Bet error: {e}")
+        
 
 # Инициализация базы данных
 def init_db():
