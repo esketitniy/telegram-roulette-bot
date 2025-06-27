@@ -102,26 +102,27 @@ def spin_roulette():
     """Определение результата рулетки (15 секторов)"""
     # 15 секторов: красный-черный-красный-черный-зеленый...
     roulette_sectors = [
-        {'number': 1, 'color': 'red'},      # сектор 1
-        {'number': 2, 'color': 'black'},    # сектор 2
-        {'number': 3, 'color': 'red'},      # сектор 3
-        {'number': 4, 'color': 'black'},    # сектор 4
-        {'number': 0, 'color': 'green'},    # сектор 5 (зеленый)
-        {'number': 5, 'color': 'red'},      # сектор 6
-        {'number': 6, 'color': 'black'},    # сектор 7
-        {'number': 7, 'color': 'red'},      # сектор 8
-        {'number': 8, 'color': 'black'},    # сектор 9
-        {'number': 9, 'color': 'red'},      # сектор 10
-        {'number': 10, 'color': 'black'},   # сектор 11
-        {'number': 11, 'color': 'red'},     # сектор 12
-        {'number': 12, 'color': 'black'},   # сектор 13
-        {'number': 13, 'color': 'red'},     # сектор 14
-        {'number': 14, 'color': 'black'}    # сектор 15
+        {'number': 1, 'color': 'red', 'angle': 0},      # сектор 1
+        {'number': 2, 'color': 'black', 'angle': 24},    # сектор 2
+        {'number': 3, 'color': 'red', 'angle': 48},      # сектор 3
+        {'number': 4, 'color': 'black', 'angle': 72},    # сектор 4
+        {'number': 0, 'color': 'green', 'angle': 96},    # сектор 5 (зеленый)
+        {'number': 5, 'color': 'red', 'angle': 120},     # сектор 6
+        {'number': 6, 'color': 'black', 'angle': 144},   # сектор 7
+        {'number': 7, 'color': 'red', 'angle': 168},     # сектор 8
+        {'number': 8, 'color': 'black', 'angle': 192},   # сектор 9
+        {'number': 9, 'color': 'red', 'angle': 216},     # сектор 10
+        {'number': 10, 'color': 'black', 'angle': 240},  # сектор 11
+        {'number': 11, 'color': 'red', 'angle': 264},    # сектор 12
+        {'number': 12, 'color': 'black', 'angle': 288},  # сектор 13
+        {'number': 13, 'color': 'red', 'angle': 312},    # сектор 14
+        {'number': 14, 'color': 'black', 'angle': 336}   # сектор 15
     ]
     
     result = random.choice(roulette_sectors)
     game_state['winning_number'] = result['number']
-    return result['color']
+    game_state['winning_angle'] = result['angle']
+    return result
     
 def calculate_winnings(bet_type, amount, result):
     """Расчет выигрыша"""
@@ -314,53 +315,56 @@ def handle_disconnect():
         print(f"Ошибка отключения: {e}")
         
 def game_loop():
-    """Основной игровой цикл"""
+    """Основной цикл игры"""
     while True:
-        # Фаза ставок
-        game_state['phase'] = 'betting'
-        game_state['time_left'] = ROULETTE_CONFIG['betting_time']
-        game_state['hash'] = generate_game_hash()
-        
-        safe_emit('phase_change', {
-            'phase': 'spinning',
-            'time_left': game_state['time_left'],
-            'result': game_state['result']
-        })
-        
-        # Отсчет времени для ставок
-        for i in range(ROULETTE_CONFIG['betting_time']):
-            time.sleep(1)
-            game_state['time_left'] -= 1
-            safe_emit('time_update', {'time_left': game_state['time_left']})
-        
-        # Фаза вращения
-        game_state['phase'] = 'spinning'
-        game_state['time_left'] = ROULETTE_CONFIG['spinning_time']
-        game_state['result'] = spin_roulette()
-        
-        safe_emit('phase_change', {
-            'phase': 'betting',
-            'time_left': game_state['time_left'],
-            'hash': game_state['hash']
-        })
-        
-        # Отсчет времени вращения
-        for i in range(ROULETTE_CONFIG['spinning_time']):
-            time.sleep(1)
-            game_state['time_left'] -= 1
-            safe_emit('time_update', {'time_left': game_state['time_left']})
-        
-        # Обработка результатов
-        process_results()
-        
-        # Пауза между играми
-        game_state['phase'] = 'waiting'
-        time.sleep(3)
-        
-        # Подготовка к следующему раунду
-        game_state['round_id'] += 1
-        game_state['current_bets'] = {}
-
+        try:
+            # Фаза ставок (25 секунд)
+            game_state['phase'] = 'betting'
+            game_state['time_left'] = ROULETTE_CONFIG['betting_time']
+            game_state['current_bets'] = {}
+            game_state['hash'] = secrets.token_hex(8)
+            
+            safe_emit('phase_change', {
+                'phase': 'betting',
+                'time_left': game_state['time_left'],
+                'hash': game_state['hash']
+            })
+            
+            # Отсчет времени для ставок
+            for i in range(ROULETTE_CONFIG['betting_time']):
+                time.sleep(1)
+                game_state['time_left'] = ROULETTE_CONFIG['betting_time'] - i - 1
+                safe_emit('time_update', {'time_left': game_state['time_left']})
+            
+            # Фаза вращения (10 секунд)
+            game_state['phase'] = 'spinning'
+            game_state['time_left'] = ROULETTE_CONFIG['spinning_time']
+            result_data = spin_roulette()  # Получаем и номер, и цвет
+            game_state['result'] = result_data['color']
+            game_state['winning_number'] = result_data['number']
+            
+            safe_emit('phase_change', {
+                'phase': 'spinning',
+                'time_left': game_state['time_left'],
+                'result': result_data
+            })
+            
+            # Отсчет времени вращения
+            for i in range(ROULETTE_CONFIG['spinning_time']):
+                time.sleep(1)
+                game_state['time_left'] = ROULETTE_CONFIG['spinning_time'] - i - 1
+                safe_emit('time_update', {'time_left': game_state['time_left']})
+            
+            # Обработка результатов и выплаты
+            process_results(game_state['result'])
+            
+            # Небольшая пауза перед следующим раундом
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"Ошибка в игровом цикле: {e}")
+            time.sleep(5)
+            
 def process_results():
     """Обработка результатов игры"""
     result = game_state['result']
