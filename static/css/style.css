@@ -1,19 +1,17 @@
-/* Базовые стили и переменные */
+/* Основные переменные */
 :root {
-    --primary-color: #ff6b35;
-    --secondary-color: #1a1a2e;
-    --accent-color: #ffd700;
-    --success-color: #28a745;
-    --danger-color: #dc3545;
-    --red-color: #e74c3c;
+    --primary-color: #1a1a2e;
+    --secondary-color: #16213e;
+    --accent-color: #e94560;
+    --success-color: #0f3460;
+    --text-light: #eee;
+    --red-color: #dc3545;
     --black-color: #2c3e50;
-    --green-color: #27ae60;
-    --background-dark: #16213e;
-    --background-light: #0f3460;
-    --text-light: #ffffff;
-    --text-dark: #333333;
+    --green-color: #28a745;
+    --gold-color: #ffd700;
 }
 
+/* Основные стили */
 * {
     margin: 0;
     padding: 0;
@@ -21,268 +19,82 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, var(--background-dark), var(--background-light));
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: var(--text-light);
     min-height: 100vh;
     overflow-x: hidden;
 }
 
-/* Навигация */
-.navbar {
-    background: rgba(26, 26, 46, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 1rem 0;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
-}
-
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 2rem;
-}
-
-.nav-brand {
-    display: flex;
-    align-items: center;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-.nav-brand i {
-    margin-right: 0.5rem;
-    font-size: 1.8rem;
-}
-
-.nav-menu {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-}
-
-.nav-link {
-    color: var(--text-light);
-    text-decoration: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.nav-link:hover {
-    background: var(--primary-color);
-    transform: translateY(-2px);
-}
-
-.nav-link.logout:hover {
-    background: var(--danger-color);
-}
-
-.balance {
-    background: var(--accent-color);
-    color: var(--text-dark);
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.main-content {
-    margin-top: 80px;
-    padding: 2rem;
-    max-width: 1400px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* Flash сообщения */
-.flash-messages {
-    margin-bottom: 2rem;
-}
-
-.flash-message {
-    background: var(--primary-color);
-    color: white;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Игровой контейнер */
+/* Контейнер игры */
 .game-container {
     display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-columns: 1fr 300px;
     gap: 2rem;
-    grid-template-areas: 
-        "info roulette betting"
-        "bets roulette betting";
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    min-height: 100vh;
 }
 
-.game-info {
-    grid-area: info;
-}
-
-.roulette-container {
-    grid-area: roulette;
+/* Основная игровая область */
+.game-main {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    gap: 2rem;
 }
 
-.betting-panel {
-    grid-area: betting;
-}
-
-.current-bets {
-    grid-area: bets;
-}
-
-/* Игровая информация */
+/* Информационная панель */
 .game-info {
     background: rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
     border-radius: 15px;
-    padding: 2rem;
     backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.round-info {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.round-info h2 {
-    color: var(--accent-color);
-    margin-bottom: 1rem;
-}
-
-.timer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
+    text-align: center;
 }
 
-.timer-circle {
-    width: 100px;
-    height: 100px;
-    border: 4px solid var(--accent-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    font-weight: bold;
-    position: relative;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-    70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
-}
-
-.timer-status {
-    font-size: 1.2rem;
-    font-weight: bold;
+.info-item h3 {
     color: var(--accent-color);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
 }
 
-.numbers-history {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
-}
-
-.history-number {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.info-item p {
+    font-size: 1.8rem;
     font-weight: bold;
-    font-size: 0.9rem;
-    color: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
-
-.history-number.red { background: var(--red-color); }
-.history-number.black { background: var(--black-color); }
-.history-number.green { background: var(--green-color); }
 
 /* Рулетка */
-.roulette-wheel {
-    width: 400px;
-    height: 400px;
-    border-radius: 50%;
-    background: linear-gradient(45deg, #8B4513, #D2691E);
+.roulette-container {
     position: relative;
-    margin: 2rem auto;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-    border: 8px solid var(--accent-color);
-}
-
-.wheel-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
-    background: var(--accent-color);
-    border-radius: 50%;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-    z-index: 10;
-}
-
-.wheel-numbers {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-}
-
-.wheel-number {
-    position: absolute;
-    width: 30px;
-    height: 30px;
     display: flex;
-    align-items: center;
     justify-content: center;
-    font-weight: bold;
-    color: white;
-    font-size: 0.8rem;
-    border-radius: 50%;
-    transform-origin: center;
+    align-items: center;
+    min-height: 400px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2rem;
+    backdrop-filter: blur(10px);
 }
 
-.wheel-pointer {
+.roulette-wheel {
+    position: relative;
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    border: 8px solid var(--gold-color);
+    box-shadow: 
+        0 0 30px rgba(255, 215, 0, 0.5),
+        inset 0 0 30px rgba(0, 0, 0, 0.3);
+    transform-origin: center;
+    transition: transform 4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Указатель рулетки */
+.roulette-pointer {
     position: absolute;
     top: -10px;
     left: 50%;
@@ -291,626 +103,604 @@ body {
     height: 0;
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
-    border-top: 30px solid var(--accent-color);
+    border-top: 30px solid var(--gold-color);
+    z-index: 10;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Секторы рулетки */
+.sector {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0;
+    overflow: hidden;
+    clip-path: polygon(0 0, 100% 0, 95% 100%);
+}
+
+.sector::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -100%;
+    border-radius: 50%;
+}
+
+.sector-red::before {
+    background: var(--red-color);
+}
+
+.sector-black::before {
+    background: var(--black-color);
+}
+
+.sector-green::before {
+    background: var(--green-color);
+}
+
+.sector span {
+    position: absolute;
+    top: 10px;
+    left: 80%;
+    transform: translateX(-50%);
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    z-index: 2;
+}
+
+/* Центр колеса */
+.roulette-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: var(--gold-color);
+    border-radius: 50%;
     z-index: 5;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
 }
 
-.roulette-spinning {
-    animation: spin 10s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(1800deg); }
-}
-
-.winning-number {
-    text-align: center;
-    margin-top: 2rem;
-    animation: fadeIn 0.5s ease;
-}
-
-.winning-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    font-weight: bold;
-    color: white;
-    margin: 0 auto 1rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.winning-circle.red { background: var(--red-color); }
-.winning-circle.black { background: var(--black-color); }
-.winning-circle.green { background: var(--green-color); }
-
-.winning-color {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.5); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-/* Панель ставок */
-.betting-panel {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 2rem;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.betting-panel h3 {
-    color: var(--accent-color);
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-.bet-options {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.bet-option {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.bet-option:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.bet-option.selected {
-    border-color: var(--accent-color);
-    background: rgba(255, 215, 0, 0.2);
-}
-
-.bet-color {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.bet-option.red .bet-color { background: var(--red-color); }
-.bet-option.black .bet-color { background: var(--black-color); }
-.bet-option.green .bet-color { background: var(--green-color); }
-
-.bet-option span {
-    flex: 1;
-    font-weight: bold;
-}
-
-.bet-option small {
-    color: var(--accent-color);
-    font-weight: bold;
-}
-
-.bet-amount {
-    margin-bottom: 2rem;
-}
-
-.bet-amount label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-}
-
-.amount-input input {
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-}
-
-.amount-input input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-}
-
-.quick-amounts {
+/* Кнопки ставок */
+.betting-controls {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 2rem;
 }
 
-.quick-bet {
-    padding: 0.5rem;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.quick-bet:hover {
-    border-color: var(--accent-color);
-    background: rgba(255, 215, 0, 0.2);
-}
-
-.place-bet-btn {
-    width: 100%;
-    padding: 1rem;
+.bet-button {
+    padding: 1.5rem;
     border: none;
-    border-radius: 10px;
-    background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
-    color: white;
+    border-radius: 15px;
     font-size: 1.2rem;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-.place-bet-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+.bet-button:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
-.place-bet-btn:disabled {
+.bet-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-/* Текущие ставки */
-.current-bets {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 2rem;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.current-bets h3 {
-    color: var(--accent-color);
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-.bet-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    margin-bottom: 0.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    animation: slideIn 0.3s ease;
-}
-
-.bet-item .bet-type {
-    padding: 0.25rem 0.75rem;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    font-weight: bold;
+.bet-red {
+    background: linear-gradient(45deg, var(--red-color), #ff4757);
     color: white;
 }
 
-.bet-item .bet-type.red { background: var(--red-color); }
-.bet-item .bet-type.black { background: var(--black-color); }
-.bet-item .bet-type.green { background: var(--green-color); }
-
-/* Формы авторизации */
-.auth-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: calc(100vh - 80px);
-}
-
-.auth-form {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 3rem;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    width: 100%;
-    max-width: 400px;
-}
-
-.auth-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.auth-header i {
-    font-size: 3rem;
-    color: var(--accent-color);
-    margin-bottom: 1rem;
-}
-
-.auth-header h2 {
-    color: var(--accent-color);
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1rem;
-    transition: border-color 0.3s ease;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-}
-
-.auth-btn {
-    width: 100%;
-    padding: 1rem;
-    border: none;
-    border-radius: 10px;
-    background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
-    color: white;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.auth-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
-}
-
-.auth-footer {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.auth-footer a {
-    color: var(--accent-color);
-    text-decoration: none;
-}
-
-.auth-footer a:hover {
-    text-decoration: underline;
-}
-
-/* Профиль */
-.profile-container {
-    max-width: 1000px;
-    margin: 0 auto;
-}
-
-.profile-header {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.profile-info {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-}
-
-.profile-info i {
-    font-size: 4rem;
-    color: var(--accent-color);
-}
-
-.profile-info h2 {
-    color: var(--accent-color);
-    margin-bottom: 0.5rem;
-}
-
-.profile-info .balance {
-    background: var(--accent-color);
-    color: var(--text-dark);
-    padding: 0.25rem 0.75rem;
-    border-radius: 15px;
-    font-weight: bold;
-}
-
-.profile-content {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 2rem;
-}
-
-.bets-history {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 2rem;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.bets-history h3 {
-    color: var(--accent-color);
-    margin-bottom: 1.5rem;
-}
-
-.bets-table {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.table-header, .table-row {
-    display: grid;
-    grid-template-columns: 1fr 0.5fr 1fr 0.75fr 0.75fr 0.75fr;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 8px;
-    align-items: center;
-}
-
-.table-header {
-    background: rgba(255, 215, 0, 0.2);
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-.table-row {
-    background: rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-}
-
-.table-row:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
-}
-
-.table-row.winner {
-    border-left: 4px solid var(--success-color);
-}
-
-.table-row.loser {
-    border-left: 4px solid var(--danger-color);
-}
-
-.bet-type {
-    padding: 0.25rem 0.75rem;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: white;
-    text-align: center;
-}
-
-.bet-type.red { background: var(--red-color); }
-.bet-type.black { background: var(--black-color); }
-.bet-type.green { background: var(--green-color); }
-
-.winning-number {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 0.8rem;
+.bet-black {
+    background: linear-gradient(45deg, var(--black-color), #34495e);
     color: white;
 }
 
-.winning-number.red { background: var(--red-color); }
-.winning-number.black { background: var(--black-color); }
-.winning-number.green { background: var(--green-color); }
-
-.win { color: var(--success-color); font-weight: bold; }
-.loss { color: var(--danger-color); }
-
-.no-bets {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.6);
-    font-style: italic;
-    padding: 2rem;
+.bet-green {
+    background: linear-gradient(45deg, var(--green-color), #2ed573);
+    color: white;
 }
 
-.profile-stats {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 2rem;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    height: fit-content;
-}
-
-.profile-stats h3 {
-    color: var(--accent-color);
-    margin-bottom: 1.5rem;
-}
-
-.stats-grid {
+/* Боковая панель */
+.game-sidebar {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
 }
 
-.stat-item {
+.sidebar-section {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.sidebar-section h3 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+/* История результатов */
+.recent-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.result-item {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    animation: slideIn 0.5s ease;
+}
+
+.result-item:hover {
+    transform: scale(1.1);
+}
+
+.result-red {
+    background: var(--red-color);
+}
+
+.result-black {
+    background: var(--black-color);
+}
+
+.result-green {
+    background: var(--green-color);
+}
+
+.no-results {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+/* Информация о балансе */
+.balance-info {
+    text-align: center;
+}
+
+.balance-amount {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--gold-color);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Модальное окно для ставок */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    margin: 10% auto;
+    padding: 2rem;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: var(--accent-color);
+}
+
+.modal h2 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.modal input {
+    width: 100%;
+    padding: 1rem;
+    margin: 1rem 0;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.modal input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.modal button {
+    background: linear-gradient(45deg, var(--accent-color), #ff6b8a);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.3);
+}
+
+/* Уведомления */
+.notifications-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification {
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    min-width: 300px;
+    cursor: pointer;
+    animation: slideInRight 0.3s ease;
+    transition: all 0.3s ease;
+}
+
+.notification:hover {
+    transform: translateX(-5px);
+}
+
+.notification-success {
+    border-left: 4px solid var(--green-color);
+}
+
+.notification-error {
+    border-left: 4px solid var(--red-color);
+}
+
+.notification-info {
+    border-left: 4px solid var(--accent-color);
+}
+
+.fade-out {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+/* Анимации */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.roulette-wheel.spinning {
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+    .game-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .roulette-wheel {
+        width: 280px;
+        height: 280px;
+    }
+}
+
+@media (max-width: 768px) {
+    .betting-controls {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .bet-button {
+        padding: 1rem;
+        font-size: 1rem;
+    }
+
+    .roulette-wheel {
+        width: 250px;
+        height: 250px;
+    }
+
+    .game-info {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .recent-results {
+        justify-content: center;
+    }
+
+    .result-item {
+        width: 35px;
+        height: 35px;
+        font-size: 12px;
+    }
+
+    .notifications-container {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+    }
+
+    .notification {
+        min-width: auto;
+    }
+}
+
+/* Стили для страниц авторизации */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.auth-form {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 3rem;
+    border-radius: 20px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.auth-form h2 {
+    color: var(--accent-color);
+    margin-bottom: 2rem;
+    font-size: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-color);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, var(--accent-color), #ff6b8a);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.3);
+}
+
+.auth-links {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.auth-links a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.auth-links a:hover {
+    color: #ff6b8a;
+    text-decoration: underline;
+}
+
+/* Flash сообщения */
+.flash-messages {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: 90%;
+    max-width: 500px;
+}
+
+.flash-message {
+    background: rgba(233, 69, 96, 0.9);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    animation: slideInDown 0.3s ease;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Дополнительные эффекты */
+.glow {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Прелоадер для рулетки */
+.roulette-loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 215, 0, 0.3);
+    border-top: 3px solid var(--gold-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 10;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Статистика игрока */
+.player-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-item {
+    text-align: center;
     padding: 1rem;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 10px;
 }
 
-.stat-item i {
-    font-size: 2rem;
-    color: var(--accent-color);
-    width: 40px;
-    text-align: center;
-}
-
-.stat-number {
+.stat-value {
     font-size: 1.5rem;
     font-weight: bold;
-    color: var(--accent-color);
-    display: block;
+    color: var(--gold-color);
 }
 
 .stat-label {
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* Адаптивность */
-@media (max-width: 1200px) {
-    .game-container {
-        grid-template-columns: 1fr;
-        grid-template-areas: 
-            "info"
-            "roulette"
-            "betting"
-            "bets";
-    }
-    
-    .roulette-wheel {
-        width: 300px;
-        height: 300px;
-    }
-}
-
-@media (max-width: 768px) {
-    .nav-container {
-        padding: 0 1rem;
-    }
-    
-    .nav-menu {
-        gap: 1rem;
-    }
-    
-    .nav-brand {
-        font-size: 1.2rem;
-    }
-    
-    .main-content {
-        padding: 1rem;
-    }
-    
-    .roulette-wheel {
-        width: 250px;
-        height: 250px;
-    }
-    
-    .profile-content {
-        grid-template-columns: 1fr;
-    }
-    
-    .table-header, .table-row {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-    
-    .table-header span, .table-row span {
-        padding: 0.25rem 0;
-    }
-}
-
-@media (max-width: 480px) {
-    .auth-form {
-        margin: 1rem;
-        padding: 2rem;
-    }
-    
-    .quick-amounts {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .bet-options {
-        gap: 0.5rem;
-    }
-    
-    .bet-option {
-        padding: 0.75rem;
-    }
-}
-
-/* Анимации */
-@keyframes glow {
-    0%, 100% { box-shadow: 0 0 5px var(--accent-color); }
-    50% { box-shadow: 0 0 20px var(--accent-color), 0 0 30px var(--accent-color); }
-}
-
-.glowing {
-    animation: glow 2s infinite;
-}
-
-/* Кнопки с эффектами */
-button, .btn {
-    position: relative;
-    overflow: hidden;
-}
-
-button::before, .btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-button:hover::before, .btn:hover::before {
-    left: 100%;
-}
-
-/* Скролбар */
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--accent-color);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-color);
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 0.5rem;
 }
