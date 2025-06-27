@@ -1,3 +1,43 @@
+// Инициализация игры при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Загрузка страницы завершена');
+    
+    // Ждем немного, чтобы все элементы точно загрузились
+    setTimeout(() => {
+        console.log('🔍 Повторная проверка элементов...');
+        
+        const requiredElements = [
+            'balance', 'bet-amount', 'game-phase', 'timer', 'roulette-wheel'
+        ];
+        
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        
+        if (missingElements.length > 0) {
+            console.error('❌ Все еще отсутствуют элементы:', missingElements);
+            return;
+        }
+
+        // Проверяем кнопки ставок
+        const colorBets = document.querySelectorAll('.color-bet');
+        if (colorBets.length === 0) {
+            console.error('❌ Кнопки ставок все еще не найдены');
+            return;
+        }
+
+        console.log('✅ Все проверки пройдены, инициализируем игру...');
+
+        // Инициализируем игру
+        const game = new RouletteGame();
+        
+        // Делаем игру доступной глобально для отладки
+        window.rouletteGame = game;
+        
+        console.log('✅ Рулетка инициализирована и готова к работе');
+        
+    }, 500); // Ждем 500мс
+    
+    // Остальной код CSS стилей...
+
 class RouletteGame {
     constructor() {
         console.log('Инициализация игры...');
