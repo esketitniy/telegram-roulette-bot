@@ -200,6 +200,77 @@ def get_recent_results():
     except Exception as e:
         return jsonify({'results': []})
 
+# Добавьте этот маршрут в app.py после существующих API маршрутов
+
+@app.route('/api/recent_results')
+def get_recent_results():
+    try:
+        # Получаем последние 10 завершенных раундов
+        recent_rounds = GameRound.query.filter(
+            GameRound.winning_number.isnot(None)
+        ).order_by(GameRound.end_time.desc()).limit(10).all()
+        
+        results = []
+        for round in recent_rounds:
+            results.append({
+                'number': round.winning_number,
+                'color': round.winning_color,
+                'round': round.round_number,
+                'timestamp': round.end_time.isoformat() if round.end_time else None
+            })
+        
+        return jsonify({'results': results})
+    except Exception as e:
+        print(f"Ошибка получения результатов: {e}")
+        return jsonify({'results': []})
+
+# Также добавьте API для статистики игрока
+@app.route('/api/player_stats')
+@login_required
+def get_player_stats():
+    try:
+        # Общее количество ставок
+        total_bets = Bet.query.filter_by(user_id=current_user.id).count()
+        
+        # Количество выигрышных ставок
+        winning_bets = Bet.query.filter_by(
+            user_id=current_user.id, 
+            is_winner=True
+        ).count()
+        
+        # Общая сумма ставок
+        total_bet_amount = db.session.query(
+            db.func.sum(Bet.amount)
+        ).filter_by(user_id=current_user.id).scalar() or 0
+        
+        # Общая сумма выигрышей
+        total_winnings = db.session.query(
+            db.func.sum(Bet.actual_win)
+        ).filter_by(user_id=current_user.id).scalar() or 0
+        
+        # Процент побед
+        win_rate = (winning_bets / total_bets * 100) if total_bets > 0 else 0
+        
+        return jsonify({
+            'total_bets': total_bets,
+            'winning_bets': winning_bets,
+            'total_bet_amount': round(total_bet_amount, 2),
+            'total_winnings': round(total_winnings, 2),
+            'win_rate': round(win_rate, 1),
+            'net_profit': round(total_winnings - total_bet_amount, 2)
+        })
+        
+    except Exception as e:
+        print(f"Ошибка получения статистики: {e}")
+        return jsonify({
+            'total_bets': 0,
+            'winning_bets': 0,
+            'total_bet_amount': 0,
+            'total_winnings': 0,
+            'win_rate': 0,
+            'net_profit': 0
+        })
+
 # WebSocket события
 @socketio.on('connect')
 def on_connect():
