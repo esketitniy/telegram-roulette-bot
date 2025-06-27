@@ -22,7 +22,10 @@ def safe_emit(event, data, room=None):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", 
+                   transport=['websocket'], 
+                   ping_timeout=60, 
+                   ping_interval=25)
 
 # Глобальные переменные для игры
 game_state = {
