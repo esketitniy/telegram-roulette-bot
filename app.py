@@ -158,7 +158,7 @@ def game_loop():
                     'state': 'betting',
                     'time_left': 25,
                     'game_id': current_game['game_id']
-                }, broadcast=True)
+                })
                 
                 # Обратный отсчет ставок
                 for i in range(25, 0, -1):
@@ -166,7 +166,7 @@ def game_loop():
                         break
                     current_game['time_left'] = i
                     print(f"⏰ Время ставок: {i}")
-                    socketio.emit('betting_time', {'time_left': i}, broadcast=True)
+                    socketio.emit('betting_time', {'time_left': i})
                     socketio.sleep(1)
                 
                 if not game_active:
@@ -184,7 +184,7 @@ def game_loop():
                     'state': 'spinning',
                     'winning_number': winning_number,
                     'winning_color': winning_color
-                }, broadcast=True)
+                })
                 
                 # Анимация вращения
                 socketio.sleep(10)
@@ -213,10 +213,10 @@ def game_loop():
                     'winning_number': winning_number,
                     'winning_color': winning_color,
                     'game_id': current_game['game_id']
-                }, broadcast=True)
+                })
                 
                 # Отправка обновленной истории
-                socketio.emit('history_update', {'history': get_last_results()}, broadcast=True)
+                socketio.emit('history_update', {'history': get_last_results()})
                 
                 # Пауза перед следующей игрой
                 socketio.sleep(3)
