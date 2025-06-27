@@ -181,25 +181,6 @@ def place_bet():
 def get_user_balance():
     return jsonify({'balance': current_user.balance})
 
-@app.route('/api/recent_results')
-def get_recent_results():
-    try:
-        recent_rounds = GameRound.query.filter(
-            GameRound.winning_number.isnot(None)
-        ).order_by(GameRound.end_time.desc()).limit(10).all()
-        
-        results = []
-        for round in recent_rounds:
-            results.append({
-                'number': round.winning_number,
-                'color': round.winning_color,
-                'round': round.round_number
-            })
-        
-        return jsonify({'results': results})
-    except Exception as e:
-        return jsonify({'results': []})
-
 # Добавьте этот маршрут в app.py после существующих API маршрутов
 
 @app.route('/api/recent_results')
