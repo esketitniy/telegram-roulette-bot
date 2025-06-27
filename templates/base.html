@@ -4,30 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Европейская Рулетка{% endblock %}</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-brand">
-                <i class="fas fa-dice"></i>
+            <div class="nav-logo">
+                <i class="fas fa-coins"></i>
                 <span>Roulette Pro</span>
             </div>
-            {% if current_user.is_authenticated %}
+            {% if session.user_id %}
             <div class="nav-menu">
                 <a href="{{ url_for('index') }}" class="nav-link">
-                    <i class="fas fa-home"></i> Игра
+                    <i class="fas fa-home"></i>
+                    <span>Игра</span>
                 </a>
                 <a href="{{ url_for('profile') }}" class="nav-link">
-                    <i class="fas fa-user"></i> Профиль
+                    <i class="fas fa-user"></i>
+                    <span>Профиль</span>
                 </a>
-                <div class="balance">
-                    <i class="fas fa-coins"></i>
-                    <span id="user-balance">{{ current_user.balance if current_user.is_authenticated else 0 }}</span>₽
-                </div>
-                <a href="{{ url_for('logout') }}" class="nav-link logout">
-                    <i class="fas fa-sign-out-alt"></i> Выход
+                <a href="{{ url_for('logout') }}" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Выход</span>
                 </a>
             </div>
             {% endif %}
@@ -39,12 +39,15 @@
             {% if messages %}
                 <div class="flash-messages">
                     {% for message in messages %}
-                        <div class="flash-message">{{ message }}</div>
+                        <div class="flash-message">
+                            <i class="fas fa-info-circle"></i>
+                            {{ message }}
+                        </div>
                     {% endfor %}
                 </div>
             {% endif %}
         {% endwith %}
-        
+
         {% block content %}{% endblock %}
     </main>
 
