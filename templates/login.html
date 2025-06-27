@@ -1,33 +1,39 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Европейская Рулетка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
-{% block content %}
-<div class="auth-container">
-    <div class="auth-form">
-        <div class="auth-header">
-            <i class="fas fa-dice"></i>
-            <h2>Вход в игру</h2>
-        </div>
-        
-        <form method="POST">
+    <div class="auth-container">
+        <form class="auth-form" method="POST">
+            <h2>🎰 Вход в игру</h2>
             <div class="form-group">
                 <label for="username">Логин:</label>
                 <input type="text" id="username" name="username" required>
             </div>
-            
             <div class="form-group">
                 <label for="password">Пароль:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            
-            <button type="submit" class="auth-btn">
-                <i class="fas fa-sign-in-alt"></i>
-                Войти
-            </button>
+            <button type="submit" class="btn-primary">Войти</button>
+            <div class="auth-links">
+                <p>Нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>
+                <p><small>Тестовый аккаунт: <strong>demo</strong> / <strong>demo123</strong></small></p>
+            </div>
         </form>
-        
-        <div class="auth-footer">
-            <p>Нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>
-        </div>
     </div>
-</div>
-{% endblock %}
+</body>
+</html>
