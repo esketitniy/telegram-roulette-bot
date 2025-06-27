@@ -6,23 +6,50 @@ class RouletteGame {
         this.currentBets = {};
         this.recentResults = [];
         this.isSpinning = false;
+        this.connectionRetries = 0;
+        this.maxRetries = 5;
         
+        console.log('🎰 Инициализация рулетки...');
         this.init();
-        this.loadRecentResults();
-        this.loadPlayerStats();
-        this.updateBalance();
     }
 
     init() {
         this.bindEvents();
         this.setupSocketEvents();
         this.createRouletteWheel();
+        this.updateBalance();
+        
+        // Загружаем данные с задержкой
+        setTimeout(() => {
+            this.loadRecentResults();
+            this.loadPlayerStats();
+            this.requestGameState();
+        }, 1000);
+    }
+
+    requestGameState() {
+        console.log('📡 Запрос состояния игры...');
+        this.socket.emit('request_game_state');
+        
+        // Также делаем HTTP запрос как резерв
+        fetch('/api/game_state')
+            .then(response => response.json())
+            .then(data => {
+                console.log('📊 Получено состояние игры:', data);
+                this.updateGameState(data);
+            })
+            .catch(error => {
+                console.error('❌ Ошибка получения состояния:', error);
+            });
     }
 
     // Создание колеса рулетки с правильными углами
     createRouletteWheel() {
         const wheel = document.querySelector('.roulette-wheel');
-        if (!wheel) return;
+        if (!wheel) {
+            console.error('❌ Элемент рулетки не найден!');
+            return;
+        }
 
         // Числа в правильном порядке европейской рулетки
         const numbers = [
@@ -62,6 +89,8 @@ class RouletteGame {
             sector.appendChild(numberSpan);
             wheel.appendChild(sector);
         });
+
+        console.log('🎯 Колесо рулетки создано');
     }
 
     // Вычисление угла поворота для определенного числа
@@ -75,13 +104,10 @@ class RouletteGame {
         if (index === -1) return 0;
         
         const sectorAngle = 360 / numbers.length;
-        // Добавляем случайный поворот в пределах сектора для реалистичности
         const randomOffset = (Math.random() - 0.5) * (sectorAngle * 0.8);
-        // Инвертируем угол для правильного направления
         const targetAngle = -(index * sectorAngle) + randomOffset;
         
-        // Добавляем несколько полных оборотов для эффектности
-        const fullRotations = 5 + Math.random() * 3; // 5-8 оборотов
+        const fullRotations = 5 + Math.random() * 3;
         return targetAngle + (fullRotations * 360);
     }
 
@@ -90,6 +116,7 @@ class RouletteGame {
         document.querySelectorAll('.bet-button').forEach(button => {
             button.addEventListener('click', (e) => {
                 const betType = e.target.getAttribute('data-bet');
+                console.log(`🎲 Клик по кнопке ставки: ${betType}`);
                 this.showBetModal(betType);
             });
         });
@@ -114,7 +141,7 @@ class RouletteGame {
             }
         });
 
-        // Закрытие модального окна по Enter
+        // Закрытие модального окна по Enter/Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && modal && modal.style.display === 'block') {
                 this.placeBet();
@@ -123,53 +150,104 @@ class RouletteGame {
                 this.closeBetModal();
             }
         });
+
+        // Кнопка для принудительного запуска игры (отладка)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = '🔧 Запустить игру';
+            debugBtn.style.position = 'fixed';
+            debugBtn.style.top = '10px';
+            debugBtn.style.left = '10px';
+            debugBtn.style.zIndex = '9999';
+            debugBtn.onclick = () => this.forceStartGame();
+            document.body.appendChild(debugBtn);
+        }
+    }
+
+    forceStartGame() {
+        fetch('/api/start_game', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🚀 Принудительный запуск:', data);
+                this.showMessage(data.message, data.success ? 'success' : 'error');
+            })
+            .catch(error => {
+                console.error('❌ Ошибка запуска:', error);
+            });
     }
 
     setupSocketEvents() {
         this.socket.on('connect', () => {
-            console.log('Подключено к серверу');
+            console.log('✅ Подключено к серверу');
+            this.connectionRetries = 0;
+            this.showMessage('Подключение установлено', 'success');
+            this.requestGameState();
         });
 
         this.socket.on('game_state', (data) => {
+            console.log('📊 Получено состояние игры:', data);
             this.updateGameState(data);
         });
 
         this.socket.on('new_round', (data) => {
-            console.log('Новый раунд:', data);
+            console.log('🎲 Новый раунд:', data);
             this.gameState = data;
             this.updateUI();
             this.resetWheel();
         });
 
         this.socket.on('timer_update', (data) => {
+            console.log(`⏰ Обновление таймера: ${data.time_left}s (${data.status})`);
             this.gameState.time_left = data.time_left;
             this.gameState.status = data.status;
             this.updateTimer();
+            this.updateBettingStatus();
         });
 
         this.socket.on('spin_start', (data) => {
-            console.log('Начало вращения:', data);
+            console.log('🌪️ Начало вращения:', data);
             this.spinWheel(data.winning_number);
         });
 
         this.socket.on('round_finished', (data) => {
-            console.log('Раунд завершен:', data);
+            console.log('🏁 Раунд завершен:', data);
             this.handleRoundFinished(data);
         });
 
         this.socket.on('bet_placed', (data) => {
+            console.log('💰 Ставка размещена:', data);
             this.showBetNotification(data);
         });
 
         this.socket.on('disconnect', () => {
-            console.log('Отключено от сервера');
+            console.log('❌ Отключено от сервера');
             this.showMessage('Соединение с сервером потеряно', 'error');
+            this.attemptReconnect();
         });
 
         this.socket.on('reconnect', () => {
-            console.log('Переподключение к серверу');
+            console.log('🔄 Переподключение к серверу');
             this.showMessage('Соединение восстановлено', 'success');
+            this.requestGameState();
         });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('❌ Ошибка подключения:', error);
+            this.attemptReconnect();
+        });
+    }
+
+    attemptReconnect() {
+        if (this.connectionRetries < this.maxRetries) {
+            this.connectionRetries++;
+            console.log(`🔄 Попытка переподключения ${this.connectionRetries}/${this.maxRetries}`);
+            
+            setTimeout(() => {
+                this.socket.connect();
+            }, 2000 * this.connectionRetries);
+        } else {
+            this.showMessage('Не удается подключиться к серверу. Обновите страницу.', 'error');
+        }
     }
 
     // Сброс колеса к начальной позиции
@@ -203,7 +281,7 @@ class RouletteGame {
         wheel.style.transition = 'transform 4s cubic-bezier(0.23, 1, 0.32, 1)';
         wheel.style.transform = `rotate(${targetAngle}deg)`;
 
-        console.log(`Вращение к числу ${winningNumber}, угол: ${targetAngle}°`);
+        console.log(`🌪️ Вращение к числу ${winningNumber}, угол: ${targetAngle}°`);
 
         // Убираем класс spinning после завершения анимации
         setTimeout(() => {
@@ -212,6 +290,7 @@ class RouletteGame {
     }
 
     updateGameState(state) {
+        console.log('🔄 Обновление состояния игры:', state);
         this.gameState = state;
         this.updateUI();
     }
@@ -231,15 +310,26 @@ class RouletteGame {
         }
         
         if (statusElement) {
-            const statusText = this.gameState.status === 'betting' 
-                ? 'Принимаются ставки' 
-                : this.gameState.status === 'spinning'
-                ? 'Рулетка вращается'
-                : 'Ожидание';
-            statusElement.textContent = statusText;
+            let statusText = 'Ожидание';
+            let statusClass = 'status-waiting';
             
-            // Добавляем визуальные индикаторы
-            statusElement.className = `status-${this.gameState.status}`;
+            switch(this.gameState.status) {
+                case 'betting':
+                    statusText = 'Принимаются ставки';
+                    statusClass = 'status-betting';
+                    break;
+                case 'spinning':
+                    statusText = 'Рулетка вращается';
+                    statusClass = 'status-spinning';
+                    break;
+                case 'waiting':
+                    statusText = 'Ожидание следующего раунда';
+                    statusClass = 'status-waiting';
+                    break;
+            }
+            
+            statusElement.textContent = statusText;
+            statusElement.className = statusClass;
         }
     }
 
@@ -254,12 +344,18 @@ class RouletteGame {
         const buttons = document.querySelectorAll('.bet-button');
         const isBetting = this.gameState.status === 'betting';
         
+        console.log(`🎲 Статус ставок: ${isBetting ? 'активны' : 'неактивны'}`);
+        
         buttons.forEach(button => {
             button.disabled = !isBetting;
             if (isBetting) {
                 button.classList.add('active');
+                button.style.opacity = '1';
+                button.style.cursor = 'pointer';
             } else {
                 button.classList.remove('active');
+                button.style.opacity = '0.6';
+                button.style.cursor = 'not-allowed';
             }
         });
     }
@@ -324,12 +420,13 @@ class RouletteGame {
             return;
         }
 
-        // Минимальная ставка
         if (amount < 1) {
             this.showMessage('Минимальная ставка: 1₽', 'error');
             betAmountInput.focus();
             return;
         }
+
+        console.log(`💰 Размещение ставки: ${betType} на ${amount}₽`);
 
         try {
             const response = await fetch('/api/place_bet', {
@@ -344,6 +441,7 @@ class RouletteGame {
             });
 
             const data = await response.json();
+            console.log('📊 Ответ сервера:', data);
 
             if (data.success) {
                 this.userBalance = data.new_balance;
@@ -357,7 +455,7 @@ class RouletteGame {
                 this.showMessage(data.message || 'Ошибка размещения ставки', 'error');
             }
         } catch (error) {
-            console.error('Ошибка:', error);
+            console.error('❌ Ошибка размещения ставки:', error);
             this.showMessage('Ошибка соединения с сервером', 'error');
         }
     }
@@ -368,8 +466,9 @@ class RouletteGame {
             const data = await response.json();
             this.userBalance = data.balance || 0;
             this.updateBalanceDisplay();
+            console.log(`💳 Баланс обновлен: ${this.userBalance}₽`);
         } catch (error) {
-            console.error('Ошибка получения баланса:', error);
+            console.error('❌ Ошибка получения баланса:', error);
         }
     }
 
@@ -388,12 +487,14 @@ class RouletteGame {
 
     async loadRecentResults() {
         try {
+            console.log('📈 Загрузка последних результатов...');
             const response = await fetch('/api/recent_results');
             const data = await response.json();
             this.recentResults = data.results || [];
             this.updateRecentResults();
+            console.log(`📊 Загружено ${this.recentResults.length} результатов`);
         } catch (error) {
-            console.error('Ошибка загрузки результатов:', error);
+            console.error('❌ Ошибка загрузки результатов:', error);
         }
     }
 
@@ -423,11 +524,12 @@ class RouletteGame {
 
     async loadPlayerStats() {
         try {
+            console.log('📊 Загрузка статистики игрока...');
             const response = await fetch('/api/player_stats');
             const data = await response.json();
             this.updatePlayerStats(data);
         } catch (error) {
-            console.error('Ошибка загрузки статистики:', error);
+            console.error('❌ Ошибка загрузки статистики:', error);
         }
     }
 
@@ -451,9 +553,13 @@ class RouletteGame {
             const icon = stats.net_profit >= 0 ? '📈' : '📉';
             elements.netProfit.innerHTML = `${icon} ${stats.net_profit}₽`;
         }
+
+        console.log('📊 Статистика обновлена:', stats);
     }
 
     handleRoundFinished(data) {
+        console.log('🏁 Обработка завершения раунда:', data);
+        
         // Добавляем результат в начало массива
         this.recentResults.unshift({
             number: data.winning_number,
@@ -468,7 +574,7 @@ class RouletteGame {
 
         this.updateRecentResults();
         this.updateBalance();
-        this.loadPlayerStats(); // Обновляем статистику после каждого раунда
+        this.loadPlayerStats();
 
         // Показываем результат с задержкой
         setTimeout(() => {
@@ -478,7 +584,7 @@ class RouletteGame {
             );
         }, 4000);
 
-        // Добавляем звуковой эффект (если браузер поддерживает)
+        // Звуковой эффект
         this.playResultSound(data.winning_color);
     }
 
@@ -503,7 +609,6 @@ class RouletteGame {
     }
 
     playResultSound(color) {
-        // Простой звуковой эффект через Web Audio API
         try {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
@@ -512,11 +617,10 @@ class RouletteGame {
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            // Разные частоты для разных цветов
             const frequencies = {
-                'red': 440,    // A4
-                'black': 330,  // E4
-                'green': 660   // E5
+                'red': 440,
+                'black': 330,
+                'green': 660
             };
             
             oscillator.frequency.setValueAtTime(frequencies[color] || 440, audioContext.currentTime);
@@ -534,6 +638,8 @@ class RouletteGame {
     }
 
     showMessage(message, type = 'info') {
+        console.log(`📢 Сообщение (${type}): ${message}`);
+        
         // Создаем элемент уведомления
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
@@ -572,18 +678,6 @@ class RouletteGame {
             }
         }, 5000);
 
-        // Удаляем при клике на уведомление
-        notification.addEventListener('click', (e) => {
-            if (e.target !== closeBtn) {
-                notification.classList.add('fade-out');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
-            }
-        });
-
         // Ограничиваем количество уведомлений
         const notifications = container.querySelectorAll('.notification');
         if (notifications.length > 5) {
@@ -593,123 +687,26 @@ class RouletteGame {
 
     // Метод для отладки
     debugInfo() {
-        console.log('=== DEBUG INFO ===');
+        console
+        debugInfo() {
+        console.log('=== 🐛 DEBUG INFO ===');
         console.log('Game State:', this.gameState);
         console.log('User Balance:', this.userBalance);
         console.log('Recent Results:', this.recentResults);
         console.log('Is Spinning:', this.isSpinning);
         console.log('Socket Connected:', this.socket.connected);
-    }
-
-    // Метод для обработки ошибок
-    handleError(error, context = 'Unknown') {
-        console.error(`[${context}] Error:`, error);
-        this.showMessage(`Ошибка: ${context}`, 'error');
-    }
-
-    // Проверка подключения к серверу
-    checkConnection() {
-        if (!this.socket.connected) {
-            this.showMessage('Проблемы с подключением к серверу', 'error');
-            return false;
-        }
-        return true;
-    }
-
-    // Метод для форматирования времени
-    formatTime(seconds) {
-        if (seconds <= 0) return '00:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    // Метод для анимации баланса
-    animateBalance(oldBalance, newBalance) {
-        const balanceElement = document.getElementById('userBalance');
-        if (!balanceElement) return;
-
-        const difference = newBalance - oldBalance;
-        if (difference === 0) return;
-
-        // Создаем элемент для показа изменения
-        const changeElement = document.createElement('div');
-        changeElement.className = `balance-change ${difference > 0 ? 'positive' : 'negative'}`;
-        changeElement.textContent = `${difference > 0 ? '+' : ''}${difference.toFixed(2)}₽`;
-        
-        balanceElement.parentNode.appendChild(changeElement);
-
-        // Анимируем и удаляем
-        setTimeout(() => {
-            changeElement.style.opacity = '0';
-            changeElement.style.transform = 'translateY(-20px)';
-            setTimeout(() => changeElement.remove(), 500);
-        }, 100);
-    }
-
-    // Сохранение настроек в localStorage
-    saveSettings() {
-        const settings = {
-            soundEnabled: this.soundEnabled || true,
-            notificationsEnabled: this.notificationsEnabled || true
-        };
-        localStorage.setItem('rouletteSettings', JSON.stringify(settings));
-    }
-
-    // Загрузка настроек из localStorage
-    loadSettings() {
-        try {
-            const settings = JSON.parse(localStorage.getItem('rouletteSettings') || '{}');
-            this.soundEnabled = settings.soundEnabled !== false;
-            this.notificationsEnabled = settings.notificationsEnabled !== false;
-        } catch (error) {
-            console.error('Ошибка загрузки настроек:', error);
-        }
+        console.log('Connection Retries:', this.connectionRetries);
+        console.log('==================');
     }
 }
 
-// Глобальные утилиты
-window.RouletteUtils = {
-    // Форматирование валюты
-    formatCurrency: (amount) => {
-        return new Intl.NumberFormat('ru-RU', {
-            style: 'currency',
-            currency: 'RUB',
-            minimumFractionDigits: 2
-        }).format(amount);
-    },
-
-    // Форматирование времени
-    formatTime: (date) => {
-        return new Intl.DateTimeFormat('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        }).format(date);
-    },
-
-    // Получение случайного числа
-    getRandomNumber: (min, max) => {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    },
-
-    // Копирование в буфер обмена
-    copyToClipboard: async (text) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch (error) {
-            console.error('Ошибка копирования:', error);
-            return false;
-        }
-    }
-};
-
 // Инициализация игры при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM загружен, инициализация игры...');
+    
     // Проверяем поддержку необходимых API
     if (!window.io) {
-        console.error('Socket.IO не загружен!');
+        console.error('❌ Socket.IO не загружен!');
         alert('Ошибка загрузки игры. Обновите страницу.');
         return;
     }
@@ -720,35 +717,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // Добавляем глобальные обработчики
     window.addEventListener('beforeunload', () => {
         if (window.rouletteGame) {
-            window.rouletteGame.saveSettings();
+            console.log('👋 Выход из приложения');
         }
     });
 
-    // Обработчик ошибок
+    // Обработчик глобальных ошибок
     window.addEventListener('error', (event) => {
-        console.error('Глобальная ошибка:', event.error);
+        console.error('💥 Глобальная ошибка:', event.error);
         if (window.rouletteGame) {
-            window.rouletteGame.handleError(event.error, 'Global');
+            window.rouletteGame.showMessage('Произошла ошибка. Обновите страницу.', 'error');
         }
     });
 
-    // Обработчик потери соединения
+    // Обработчики сети
     window.addEventListener('offline', () => {
+        console.log('📴 Соединение потеряно');
         if (window.rouletteGame) {
             window.rouletteGame.showMessage('Соединение с интернетом потеряно', 'error');
         }
     });
 
     window.addEventListener('online', () => {
+        console.log('📶 Соединение восстановлено');
         if (window.rouletteGame) {
             window.rouletteGame.showMessage('Соединение с интернетом восстановлено', 'success');
+            window.rouletteGame.requestGameState();
         }
     });
 
-    console.log('🎰 Рулетка загружена успешно!');
-});
+    // Добавляем кнопку отладки в консоль
+    window.debugRoulette = () => {
+        if (window.rouletteGame) {
+            window.rouletteGame.debugInfo();
+        }
+    };
 
-// Экспорт для использования в других скриптах
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = RouletteGame;
-}
+    console.log('🎰 Игра инициализирована! Используйте debugRoulette() для отладки.');
+});
