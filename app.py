@@ -29,7 +29,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Настройка SocketIO (упрощенная для продакшена)
+# Настройка SocketIO
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*",
@@ -181,6 +181,25 @@ def place_bet():
 def get_user_balance():
     return jsonify({'balance': current_user.balance})
 
+@app.route('/api/recent_results')
+def get_recent_results():
+    try:
+        recent_rounds = GameRound.query.filter(
+            GameRound.winning_number.isnot(None)
+        ).order_by(GameRound.end_time.desc()).limit(10).all()
+        
+        results = []
+        for round in recent_rounds:
+            results.append({
+                'number': round.winning_number,
+                'color': round.winning_color,
+                'round': round.round_number
+            })
+        
+        return jsonify({'results': results})
+    except Exception as e:
+        return jsonify({'results': []})
+
 # WebSocket события
 @socketio.on('connect')
 def on_connect():
@@ -218,6 +237,7 @@ def process_bets(winning_number, winning_color):
         
     except Exception as e:
         db.session.rollback()
+        print(f'Ошибка обработки ставок: {e}')
 
 def game_loop():
     global current_round, game_state, game_started
@@ -226,11 +246,14 @@ def game_loop():
         return
     
     game_started = True
+    print("🎰 Игровой цикл запущен!")
     
     with app.app_context():
         while True:
             try:
-                # Фаза ставок
+                print(f"🎲 Начинается раунд #{game_state['round_number']}")
+                
+                # Фаза ставок (30 секунд)
                 game_state['status'] = 'betting'
                 game_state['time_left'] = 30
                 
@@ -255,7 +278,9 @@ def game_loop():
                     }, room='game')
                     time.sleep(1)
                 
-                # Фаза вращения
+                print("⏰ Прием ставок завершен")
+                
+                # Фаза вращения (10 секунд)
                 game_state['status'] = 'spinning'
                 game_state['time_left'] = 10
                 current_round.status = 'spinning'
@@ -263,6 +288,8 @@ def game_loop():
                 
                 winning_number = random.randint(0, 36)
                 winning_color = get_winning_color(winning_number)
+                
+                print(f"🎯 Выпало число: {winning_number} ({winning_color})")
                 
                 socketio.emit('spin_start', {
                     'winning_number': winning_number,
@@ -277,7 +304,7 @@ def game_loop():
                     }, room='game')
                     time.sleep(1)
                 
-                # Завершение
+                # Завершение раунда
                 current_round.winning_number = winning_number
                 current_round.winning_color = winning_color
                 current_round.status = 'finished'
@@ -292,28 +319,37 @@ def game_loop():
                     'round_number': game_state['round_number']
                 }, room='game')
                 
+                print(f"✅ Раунд #{game_state['round_number']} завершен")
+                
                 game_state['round_number'] += 1
-                time.sleep(3)
+                time.sleep(3)  # Пауза между раундами
                 
             except Exception as e:
-                print(f'Ошибка в игровом цикле: {e}')
+                print(f'❌ Ошибка в игровом цикле: {e}')
                 time.sleep(5)
 
 # Инициализация при запуске
 def initialize_app():
     with app.app_context():
-        db.create_all()
-        
-        if User.query.count() == 0:
-            demo_user = User(username='demo')
-            demo_user.set_password('demo123')
-            demo_user.balance = 5000.0
-            db.session.add(demo_user)
-            db.session.commit()
-        
-        # Запуск игрового цикла
-        game_thread = threading.Thread(target=game_loop, daemon=True)
-        game_thread.start()
+        try:
+            print("🗃️ Инициализация базы данных...")
+            db.create_all()
+            
+            if User.query.count() == 0:
+                print("👤 Создание тестового пользователя...")
+                demo_user = User(username='demo')
+                demo_user.set_password('demo123')
+                demo_user.balance = 5000.0
+                db.session.add(demo_user)
+                db.session.commit()
+                print("✅ Создан тестовый пользователь: demo/demo123")
+            
+            print("🚀 Запуск игрового цикла...")
+            game_thread = threading.Thread(target=game_loop, daemon=True)
+            game_thread.start()
+            
+        except Exception as e:
+            print(f"❌ Ошибка инициализации: {e}")
 
 # Инициализация приложения
 initialize_app()
@@ -322,9 +358,14 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     
+    print(f"🌐 Запуск приложения на порту {port}")
+    print("🎰 ЕВРОПЕЙСКАЯ РУЛЕТКА ОНЛАЙН")
+    print("=" * 50)
+    
     socketio.run(
         app, 
         debug=debug_mode, 
         host='0.0.0.0', 
-        port=port
-            )
+        port=port,
+        allow_unsafe_werkzeug=True  # ← ЭТО ИСПРАВЛЕНИЕ!
+    )
