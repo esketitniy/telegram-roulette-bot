@@ -5,25 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Европейская Рулетка Онлайн</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
 </head>
 <body>
-    <!-- Flash сообщения -->
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for message in messages %}
-                    <div class="flash-message">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-
-    <!-- Основной контейнер -->
     <div class="game-container">
-        <!-- Основная игровая область -->
+        <!-- Главная игровая область -->
         <div class="game-main">
-            <!-- Информационная панель -->
+            <!-- Информация о игре -->
             <div class="game-info">
                 <div class="info-item">
                     <h3>Раунд</h3>
@@ -31,77 +18,74 @@
                 </div>
                 <div class="info-item">
                     <h3>Статус</h3>
-                    <p id="gameStatus">Ожидание</p>
+                    <p id="gameStatus" class="status-waiting">Ожидание</p>
                 </div>
                 <div class="info-item">
                     <h3>Время</h3>
                     <p id="timer">0</p>
                 </div>
                 <div class="info-item">
-                    <h3>Игрок</h3>
-                    <p>{{ user.username }}</p>
+                    <h3>Баланс</h3>
+                    <p id="userBalance" class="balance-amount">{{ "%.2f"|format(user.balance) }}₽</p>
                 </div>
             </div>
 
             <!-- Рулетка -->
             <div class="roulette-container">
                 <div class="roulette-pointer"></div>
-                <div class="roulette-wheel">
-                    <!-- Секторы будут созданы через JavaScript -->
+                <div class="roulette-wheel" id="rouletteWheel">
+                    <!-- Сектора будут созданы через JavaScript -->
                 </div>
-                <div class="roulette-center"></div>
             </div>
 
             <!-- Кнопки ставок -->
-            <div class="betting-controls">
-                <button class="bet-button bet-red" data-bet="red" disabled>
-                    Красное<br><small>Выплата x2</small>
-                </button>
-                <button class="bet-button bet-black" data-bet="black" disabled>
-                    Черное<br><small>Выплата x2</small>
-                </button>
-                <button class="bet-button bet-green" data-bet="green" disabled>
-                    Зеро<br><small>Выплата x36</small>
-                </button>
+            <div class="betting-section">
+                <h3>💰 Сделайте ставку</h3>
+                <div class="bet-buttons">
+                    <button class="bet-button bet-red" data-bet="red" disabled>
+                        <span class="bet-label">Красное</span>
+                        <span class="bet-multiplier">x2</span>
+                    </button>
+                    <button class="bet-button bet-black" data-bet="black" disabled>
+                        <span class="bet-label">Черное</span>
+                        <span class="bet-multiplier">x2</span>
+                    </button>
+                    <button class="bet-button bet-green" data-bet="green" disabled>
+                        <span class="bet-label">Зеро</span>
+                        <span class="bet-multiplier">x36</span>
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- Боковая панель -->
         <div class="game-sidebar">
-            <!-- Баланс -->
+            <!-- Последние результаты -->
             <div class="sidebar-section">
-                <h3>Ваш баланс</h3>
-                <div class="balance-info">
-                    <div class="balance-amount" id="userBalance">0.00₽</div>
-                </div>
-            </div>
-
-            <!-- История результатов -->
-            <div class="sidebar-section">
-                <h3>Последние результаты</h3>
+                <h3>📊 Последние результаты</h3>
                 <div class="recent-results" id="recentResults">
-                    <div class="no-results">Загрузка...</div>
+                    <div class="loading">Загрузка...</div>
                 </div>
             </div>
 
             <!-- Статистика игрока -->
             <div class="sidebar-section">
-                <h3>Ваша статистика</h3>
-                <div class="player-stats" id="playerStats">
+                <h3>📈 Ваша статистика</h3>
+                <div class="player-stats">
                     <div class="stat-item">
-                        <div class="stat-value" id="totalBets">0</div>
+                        <div class="stat-value" id="totalBets">-</div>
                         <div class="stat-label">Всего ставок</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value" id="winRate">0%</div>
+                        <div class="stat-value" id="winRate">-</div>
                         <div class="stat-label">Процент побед</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value" id="totalWinnings">0₽</div>
+                        <div class="stat-value" id="totalWinnings">-</div>
                         <div class="stat-label">Выиграно</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value" id="netProfit">0₽</div>
+                        <div class="stat-value" id="netProfit">-</div>
                         <div class="stat-label">Чистая прибыль</div>
                     </div>
                 </div>
@@ -109,29 +93,68 @@
 
             <!-- Навигация -->
             <div class="sidebar-section">
-                <div style="text-align: center;">
-                    <a href="{{ url_for('profile') }}" style="color: var(--accent-color); text-decoration: none; display: block; margin-bottom: 1rem;">Профиль</a>
-                    <a href="{{ url_for('logout') }}" style="color: var(--accent-color); text-decoration: none;">Выйти</a>
+                <h3>🎮 Меню</h3>
+                <div class="nav-menu">
+                    <a href="{{ url_for('profile') }}" class="nav-button">👤 Профиль</a>
+                    <a href="{{ url_for('logout') }}" class="nav-button">🚪 Выход</a>
+                </div>
+            </div>
+
+            <!-- Отладочная информация (только в режиме разработки) -->
+            <div class="sidebar-section debug-section" style="display: none;" id="debugSection">
+                <h3>🐛 Отладка</h3>
+                <div class="debug-info">
+                    <p>Подключение: <span id="connectionStatus">Проверка...</span></p>
+                    <p>Статус игры: <span id="debugGameStatus">-</span></p>
+                    <button onclick="window.rouletteGame?.debugInfo()" class="debug-btn">Показать в консоли</button>
+                    <button onclick="window.rouletteGame?.requestGameState()" class="debug-btn">Запросить статус</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно ставки -->
+    <!-- Модальное окно для размещения ставки -->
     <div id="betModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Размещение ставки</h2>
-            <p>Ставка на: <strong id="betType"></strong></p>
-            <input type="number" id="betAmount" placeholder="Введите сумму ставки" min="1" step="0.01">
-            <br><br>
-            <button id="confirmBet">Подтвердить ставку</button>
+            <h3>💰 Размещение ставки</h3>
+            <p>Тип ставки: <strong id="betType">-</strong></p>
+            <div class="form-group">
+                <label for="betAmount">Сумма ставки (₽):</label>
+                <input type="number" id="betAmount" min="1" max="{{ user.balance }}" step="0.01" placeholder="Введите сумму">
+            </div>
+            <div class="modal-actions">
+                <button id="confirmBet" class="btn-primary">Поставить</button>
+                <button class="close btn-secondary">Отмена</button>
+            </div>
         </div>
     </div>
 
-    <!-- Контейнер для уведомлений -->
-    <div id="notifications" class="notifications-container"></div>
-
+    <!-- Подключение скриптов -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    
+    <!-- Скрипт для отладки -->
+    <script>
+        // Показываем отладочную секцию в режиме разработки
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            document.getElementById('debugSection').style.display = 'block';
+            
+            // Обновляем статус подключения
+            setInterval(() => {
+                const statusElement = document.getElementById('connectionStatus');
+                const gameStatusElement = document.getElementById('debugGameStatus');
+                
+                if (window.rouletteGame && statusElement) {
+                    statusElement.textContent = window.rouletteGame.socket.connected ? '✅ Подключен' : '❌ Отключен';
+                    statusElement.style.color = window.rouletteGame.socket.connected ? 'green' : 'red';
+                }
+                
+                if (window.rouletteGame && gameStatusElement) {
+                    gameStatusElement.textContent = window.rouletteGame.gameState.status || 'неизвестно';
+                }
+            }, 1000);
+        }
+    </script>
 </body>
 </html>
