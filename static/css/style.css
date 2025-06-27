@@ -212,12 +212,14 @@ body {
     font-weight: bold;
     color: white;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .sector.red { background: #ff4757; }
 .sector.black { background: #2f3542; }
 .sector.green { background: #00ff88; color: #000; }
 
+/* 15 секторов - угол каждого сектора = 360/15 = 24 градуса */
 .sector:nth-child(1) { transform: rotate(0deg); }
 .sector:nth-child(2) { transform: rotate(24deg); }
 .sector:nth-child(3) { transform: rotate(48deg); }
