@@ -24,22 +24,29 @@
     </div>
 
     <!-- Рулетка -->
-    <div class="roulette-container">
-        <div class="roulette-wheel-container">
-            <div class="roulette-wheel" id="roulette-wheel">
-                {% for i in range(15) %}
-                    {% if i == 0 %}
-                        <div class="sector green" data-color="green">0</div>
-                    {% elif i <= 7 %}
-                        <div class="sector red" data-color="red">{{ i }}</div>
-                    {% else %}
-                        <div class="sector black" data-color="black">{{ i }}</div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            <div class="roulette-pointer"></div>
+<div class="roulette-container">
+    <div class="roulette-wheel-container">
+        <div class="roulette-wheel" id="roulette-wheel">
+            <!-- 15 секторов: красный-черный-красный-черный-зеленый -->
+            <div class="sector red" data-number="1">1</div>
+            <div class="sector black" data-number="2">2</div>
+            <div class="sector red" data-number="3">3</div>
+            <div class="sector black" data-number="4">4</div>
+            <div class="sector green" data-number="0">0</div>
+            <div class="sector red" data-number="5">5</div>
+            <div class="sector black" data-number="6">6</div>
+            <div class="sector red" data-number="7">7</div>
+            <div class="sector black" data-number="8">8</div>
+            <div class="sector red" data-number="9">9</div>
+            <div class="sector black" data-number="10">10</div>
+            <div class="sector red" data-number="11">11</div>
+            <div class="sector black" data-number="12">12</div>
+            <div class="sector red" data-number="13">13</div>
+            <div class="sector black" data-number="14">14</div>
         </div>
+        <div class="roulette-pointer"></div>
     </div>
+</div>
 
     <!-- История выпадений -->
     <div class="history-container">
