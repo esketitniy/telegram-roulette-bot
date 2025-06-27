@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Добавь это в начало body -->
+<div id="debug-info" style="position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; z-index: 9999;">
+    <div>Статус: <span id="connection-status">Подключение...</span></div>
+    <div>Фаза: <span id="debug-phase">-</span></div>
+    <div>Время: <span id="debug-time">-</span></div>
+</div>
+
+<script>
+// Отладочная информация
+setInterval(() => {
+    const game = window.rouletteGame;
+    if (game) {
+        document.getElementById('connection-status').textContent = game.isConnected ? 'Подключен' : 'Отключен';
+        document.getElementById('debug-phase').textContent = document.getElementById('game-phase')?.textContent || '-';
+        document.getElementById('debug-time').textContent = document.getElementById('timer')?.textContent || '-';
+    }
+}, 1000);
+</script>
+
 <div class="game-container">
     <!-- Информационная панель -->
     <div class="info-panel">
