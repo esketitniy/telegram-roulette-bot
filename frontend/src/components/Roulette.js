@@ -45,3 +45,71 @@ const Roulette = ({ isSpinning, result }) => {
   const sectorAngle = 360 / 15;
 
   return (
+    <div className="roulette-container">
+      <div className="roulette-pointer">▼</div>
+      <motion.div
+        className="roulette-wheel"
+        animate={{ rotate: rotation }}
+        transition={{
+          duration: isSpinning ? 4 : 0,
+          ease: [0.23, 1, 0.32, 1]
+        }}
+      >
+        <svg width="400" height="400" viewBox="0 0 400 400">
+          <circle cx="200" cy="200" r="190" fill="#8B4513" stroke="#654321" strokeWidth="4" />
+          {sectors.map((sector, index) => {
+            const startAngle = (index * sectorAngle - 90) * (Math.PI / 180);
+            const endAngle = ((index + 1) * sectorAngle - 90) * (Math.PI / 180);
+            
+            const largeArcFlag = sectorAngle > 180 ? 1 : 0;
+            
+            const x1 = 200 + 170 * Math.cos(startAngle);
+            const y1 = 200 + 170 * Math.sin(startAngle);
+            const x2 = 200 + 170 * Math.cos(endAngle);
+            const y2 = 200 + 170 * Math.sin(endAngle);
+            
+            const textAngle = (startAngle + endAngle) / 2;
+            const textX = 200 + 130 * Math.cos(textAngle);
+            const textY = 200 + 130 * Math.sin(textAngle);
+            
+            return (
+              <g key={index}>
+                <path
+                  d={`M 200 200 L ${x1} ${y1} A 170 170 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                  fill={sector.color}
+                  stroke="white"
+                  strokeWidth="2"
+                />
+                <text
+                  x={textX}
+                  y={textY}
+                  fill="white"
+                  fontSize="20"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                >
+                  {sector.number}
+                </text>
+              </g>
+            );
+          })}
+          <circle cx="200" cy="200" r="20" fill="#333" />
+        </svg>
+      </motion.div>
+      
+      {result && (
+        <div className="result-display">
+          <div className={`result-number ${result.color.toLowerCase()}`}>
+            {result.number}
+          </div>
+          <div className="result-color">
+            {result.color}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Roulette;
