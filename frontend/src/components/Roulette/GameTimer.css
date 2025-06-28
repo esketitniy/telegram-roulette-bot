@@ -1,0 +1,80 @@
+.game-timer {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timer-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.timer-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.timer-info {
+  flex: 1;
+  text-align: center;
+}
+
+.phase-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.time-left {
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+}
+
+.timer-progress {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  transition: width 1s linear;
+  border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  .game-timer {
+    padding: 16px;
+  }
+  
+  .timer-content {
+    gap: 12px;
+  }
+  
+  .timer-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .phase-text {
+    font-size: 16px;
+  }
+  
+  .time-left {
+    font-size: 20px;
+  }
+}
