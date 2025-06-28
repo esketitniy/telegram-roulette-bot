@@ -1,57 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import io from 'socket.io-client';
-
-import Header from './components/Layout/Header';
-import Auth from './components/Auth/Auth';
-import GameRoom from './components/Roulette/GameRoom';
-import Profile from './components/Profile/Profile';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SocketProvider } from './contexts/SocketContext';
-
 import './App.css';
+import Login from './components/Login';
+import Register from './components/Register';
+import Game from './components/Game';
+import Profile from './components/Profile';
+import Header from './components/Header';
 
 function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <Toaster position="top-right" />
-          <AppContent />
-        </div>
-      </Router>
-    </AuthProvider>
-  );
-}
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-function AppContent() {
-  const { user, loading } = useAuth();
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const handleLogin = (userData, token) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Auth />;
+    return <div className="loading">Loading...</div>;
   }
 
   return (
-    <SocketProvider>
-      <Header />
-      <main className="main-content">
+    <Router>
+      <div className="App">
+        {user && <Header user={user} onLogout={handleLogout} />}
         <Routes>
-          <Route path="/" element={<GameRoom />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route 
+            path="/login" 
+            element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/game" />} 
+          />
+          <Route 
+            path="/register" 
+            element={!user ? <Register onLogin={handleLogin} /> : <Navigate to="/game" />} 
+          />
+          <Route 
+            path="/game" 
+            element={user ? <Game user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/profile" 
+            element={user ? <Profile user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/" 
+            element={<Navigate to={user ? "/game" : "/login"} />} 
+          />
         </Routes>
-      </main>
-    </SocketProvider>
+      </div>
+    </Router>
   );
 }
 
