@@ -1,0 +1,47 @@
+services:
+  # Backend Service
+  - type: web
+    name: roulette-backend
+    env: node
+    plan: starter
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        fromDatabase:
+          name: roulette-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: roulette-frontend
+          property: host
+
+  # Frontend Service  
+  - type: web
+    name: roulette-frontend
+    env: static
+    plan: starter
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          type: web
+          name: roulette-backend
+          property: host
+      - key: REACT_APP_SOCKET_URL
+        fromService:
+          type: web
+          name: roulette-backend
+          property: host
+
+databases:
+  - name: roulette-db
+    plan: starter
