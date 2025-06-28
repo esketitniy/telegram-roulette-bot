@@ -1,49 +1,29 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { User, LogOut, Home, Coins } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
 import './Header.css';
 
-const Header = () => {
-  const { user, logout } = useAuth();
-  const location = useLocation();
+const Header = ({ user, onLogout }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    onLogout();
+    navigate('/login');
+  };
 
   return (
     <header className="header">
-      <div className="header-container">
-        <Link to="/" className="logo">
-          <div className="logo-icon">🎰</div>
-          <span>Roulette</span>
-        </Link>
-
+      <div className="header-content">
+        <div className="logo">
+          <h1>🎰 Roulette</h1>
+        </div>
         <nav className="nav">
-          <Link 
-            to="/" 
-            className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-          >
-            <Home size={20} />
-            <span>Game</span>
-          </Link>
-          <Link 
-            to="/profile" 
-            className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}
-          >
-            <User size={20} />
-            <span>Profile</span>
-          </Link>
+          <Link to="/game" className="nav-link">Game</Link>
+          <Link to="/profile" className="nav-link">Profile</Link>
         </nav>
-
         <div className="user-info">
-          <div className="balance">
-            <Coins size={20} />
-            <span>{user?.balance || 0}</span>
-          </div>
-          <div className="user-menu">
-            <span className="username">{user?.username}</span>
-            <button className="logout-btn" onClick={logout}>
-              <LogOut size={16} />
-            </button>
-          </div>
+          <span className="balance">💰 ${user.balance}</span>
+          <span className="username">{user.username}</span>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
         </div>
       </div>
     </header>
