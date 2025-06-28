@@ -1,0 +1,126 @@
+.game-room {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.game-room.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh;
+}
+
+.loading-content {
+  text-align: center;
+  color: white;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.game-header h1 {
+  font-size: 32px;
+  margin: 0;
+  background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.game-info {
+  display: flex;
+  gap: 30px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.info-item .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.game-content {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 30px;
+}
+
+.game-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.roulette-section {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.game-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 1200px) {
+  .game-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .game-right {
+    grid-template-columns: 1fr 1fr;
+    display: grid;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-room {
+    padding: 10px;
+  }
+  
+  .game-header {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .game-info {
+    justify-content: center;
+    gap: 20px;
+  }
+  
+  .game-right {
+    grid-template-columns: 1fr;
+  }
+  
+  .roulette-section {
+    padding: 20px;
+  }
+}
