@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: roulette-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        value: postgresql://admin:aLqNou9NGyaVk0g8roYnBsmPXDSiLz9R@dpg-d1ftqqali9vc739vuieg-a.oregon-postgres.render.com/roulette_jnfa
+      - key: FRONTEND_URL
+        value: https://your-frontend-name.onrender.com
