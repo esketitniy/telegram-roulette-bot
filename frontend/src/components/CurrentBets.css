@@ -1,0 +1,121 @@
+.current-bets {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  padding: 25px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.current-bets h3 {
+  color: #ffd700;
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.bet-summary {
+  margin-bottom: 20px;
+}
+
+.bet-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border-left: 4px solid;
+}
+
+.bet-group.red {
+  background: rgba(255, 68, 68, 0.2);
+  border-left-color: #ff4444;
+}
+
+.bet-group.black {
+  background: rgba(51, 51, 51, 0.2);
+  border-left-color: #333333;
+}
+
+.bet-group.green {
+  background: rgba(34, 170, 34, 0.2);
+  border-left-color: #22aa22;
+}
+
+.bet-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.color-name {
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.bet-total {
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.all-bets {
+  max-height: 200px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 15px;
+}
+
+.all-bets::-webkit-scrollbar {
+  width: 6px;
+}
+
+.all-bets::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.all-bets::-webkit-scrollbar-thumb {
+  background: #ffd700;
+  border-radius: 3px;
+}
+
+.bet-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bet-item:last-child {
+  border-bottom: none;
+}
+
+.username {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  flex: 1;
+}
+
+.bet-item .bet-color {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin: 0 10px;
+}
+
+.bet-item .bet-amount {
+  font-weight: bold;
+  color: #ffd700;
+  min-width: 60px;
+  text-align: right;
+}
+
+.no-bets {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 20px;
+  font-style: italic;
+}
