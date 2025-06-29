@@ -1,0 +1,162 @@
+.betting-panel {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  padding: 25px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: fit-content;
+}
+
+.betting-header {
+  margin-bottom: 25px;
+}
+
+.betting-header h3 {
+  color: #ffd700;
+  margin-bottom: 10px;
+  font-size: 22px;
+}
+
+.bet-limits {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+}
+
+.bet-amount-section {
+  margin-bottom: 25px;
+}
+
+.bet-amount-section label {
+  display: block;
+  margin-bottom: 15px;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.amount-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.amount-btn {
+  padding: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+.amount-btn:hover:not(:disabled) {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.amount-btn.active {
+  border-color: #ffd700;
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+  color: #333;
+}
+
+.amount-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-amount {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 16px;
+}
+
+.custom-amount:focus {
+  outline: none;
+  border-color: #ffd700;
+}
+
+.color-selection {
+  margin-bottom: 25px;
+}
+
+.color-selection label {
+  display: block;
+  margin-bottom: 15px;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.color-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.color-btn {
+  padding: 15px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.color-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.color-btn.selected {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.color-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.place-bet-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.place-bet-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+}
+
+.place-bet-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.user-bets {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 15px;
+}
+
+.user-bets h4 {
