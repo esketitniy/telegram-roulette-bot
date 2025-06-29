@@ -160,3 +160,47 @@
 }
 
 .user-bets h4 {
+  margin-bottom: 10px;
+  color: #ffd700;
+  font-size: 16px;
+}
+
+.user-bet {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-bet:last-child {
+  border-bottom: none;
+}
+
+.bet-color {
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.bet-color.red {
+  background: #ff4444;
+  color: white;
+}
+
+.bet-color.black {
+  background: #333333;
+  color: white;
+}
+
+.bet-color.green {
+  background: #22aa22;
+  color: white;
+}
+
+.bet-amount {
+  font-weight: bold;
+  color: #ffd700;
+}
