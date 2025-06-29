@@ -1,57 +1,42 @@
 .header {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0 20px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 
-.header-container {
-  max-width: 1400px;
-  margin: 0 auto;
+.header-content {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
   height: 70px;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  color: white;
+.logo h1 {
+  color: #ffd700;
   font-size: 24px;
   font-weight: bold;
 }
 
-.logo-icon {
-  font-size: 32px;
-}
-
 .nav {
   display: flex;
-  gap: 24px;
+  gap: 30px;
 }
 
 .nav-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  color: white;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  padding: 10px 20px;
   border-radius: 8px;
   transition: all 0.3s ease;
-  font-weight: 500;
 }
 
-.nav-link:hover,
-.nav-link.active {
-  color: white;
+.nav-link:hover {
   background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
 }
 
 .user-info {
@@ -61,67 +46,31 @@
 }
 
 .balance {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 193, 7, 0.2);
-  color: #ffc107;
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+  color: #333;
   padding: 8px 16px;
   border-radius: 20px;
-  font-weight: 600;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.user-menu {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  font-weight: bold;
+  font-size: 16px;
 }
 
 .username {
-  color: white;
   font-weight: 500;
+  color: #ffd700;
 }
 
 .logout-btn {
-  background: rgba(255, 107, 107, 0.2);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-  color: #ff6b6b;
-  padding: 8px;
+  background: #ff4757;
+  color: white;
+  border: none;
+  padding: 10px 20px;
   border-radius: 8px;
   cursor: pointer;
+  font-weight: 500;
   transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
 }
 
 .logout-btn:hover {
-  background: rgba(255, 107, 107, 0.3);
-}
-
-@media (max-width: 768px) {
-  .header {
-    padding: 0 10px;
-  }
-  
-  .header-container {
-    height: 60px;
-  }
-  
-  .logo span {
-    display: none;
-  }
-  
-  .nav-link span {
-    display: none;
-  }
-  
-  .username {
-    display: none;
-  }
-  
-  .balance {
-    padding: 6px 12px;
-    font-size: 14px;
-  }
+  background: #ff3742;
+  transform: translateY(-2px);
 }
