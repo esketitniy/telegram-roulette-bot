@@ -1,0 +1,70 @@
+.roulette-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  padding: 30px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.roulette-pointer {
+  font-size: 40px;
+  color: #ffd700;
+  margin-bottom: -10px;
+  z-index: 10;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+}
+
+.roulette-wheel {
+  margin: 20px 0;
+}
+
+.roulette-wheel svg {
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+}
+
+.result-display {
+  margin-top: 20px;
+  text-align: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.result-number {
+  font-size: 48px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+
+.result-number.red {
+  background: #ff4444;
+  color: white;
+}
+
+.result-number.black {
+  background: #333333;
+  color: white;
+}
+
+.result-number.green {
+  background: #22aa22;
+  color: white;
+}
+
+.result-color {
+  font-size: 24px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
