@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import './Auth.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
-const Login = ({ onLogin }) => {
+const Login = ({ setUser }) => {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -18,6 +15,7 @@ const Login = ({ onLogin }) => {
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -26,10 +24,33 @@ const Login = ({ onLogin }) => {
     setError('');
 
     try {
-      const response = await axios.post(`${API_URL}/api/login`, formData);
-      onLogin(response.data.user, response.data.token);
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      
+      console.log('Sending login request to:', `${API_URL}/api/auth/login`);
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+      console.log('Login response:', data);
+
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        setUser(data.user);
+        alert(`Welcome back, ${data.user.username}!`);
+      } else {
+        setError(data.error || 'Login failed');
+      }
     } catch (error) {
-      setError(error.response?.data?.error || 'Login failed');
+      console.error('Login error:', error);
+      setError(`Connection failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -38,32 +59,50 @@ const Login = ({ onLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Login</h2>
-        {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+        <h2>🎰 Welcome Back</h2>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <input
+              type="text"
+              name="username"
+              placeholder="Username or Email"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="form-group">
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              disabled={loading}
+            />
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+          
+          <button 
+            type="submit" 
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? 'Signing In...' : 'Login'}
           </button>
         </form>
-        <p>
-          Don't have an account? <Link to="/register">Register</Link>
-        </p>
+        
+        <div className="auth-links">
+          <p>Don't have an account? <Link to="/register">Register here</Link></p>
+        </div>
+
+        <div className="debug-info">
+          <small>API URL: {process.env.REACT_APP_API_URL || 'Not set'}</small>
+        </div>
       </div>
     </div>
   );

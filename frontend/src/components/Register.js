@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import './Auth.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
-const Register = ({ onLogin }) => {
+const Register = ({ setUser }) => {
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
     password: '',
     confirmPassword: ''
   });
@@ -19,6 +17,7 @@ const Register = ({ onLogin }) => {
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError(''); // Очистить ошибку при изменении полей
   };
 
   const handleSubmit = async (e) => {
@@ -26,20 +25,55 @@ const Register = ({ onLogin }) => {
     setLoading(true);
     setError('');
 
+    // Валидация
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post(`${API_URL}/api/register`, {
-        username: formData.username,
-        password: formData.password
+      // Определяем URL backend
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      
+      console.log('Sending registration request to:', `${API_URL}/api/auth/register`);
+
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
+        })
       });
-      onLogin(response.data.user, response.data.token);
+
+      const data = await response.json();
+      console.log('Registration response:', data);
+
+      if (response.ok) {
+        // Сохраняем токен и данные пользователя
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        setUser(data.user);
+        
+        // Показываем успешное сообщение
+        alert(`Welcome, ${data.user.username}! Registration successful!`);
+      } else {
+        setError(data.error || 'Registration failed');
+      }
     } catch (error) {
-      setError(error.response?.data?.error || 'Registration failed');
+      console.error('Registration error:', error);
+      setError(`Connection failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -48,40 +82,77 @@ const Register = ({ onLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Register</h2>
-        {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+        <h2>🎰 Join the Game</h2>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <input
+              type="text"
+              name="username"
+              placeholder="Username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              minLength="3"
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="form-group">
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="form-group">
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              minLength="6"
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="form-group">
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              minLength="6"
+              disabled={loading}
+            />
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+          
+          <button 
+            type="submit" 
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? 'Creating Account...' : 'Register'}
           </button>
         </form>
-        <p>
-          Already have an account? <Link to="/login">Login</Link>
-        </p>
+        
+        <div className="auth-links">
+          <p>Already have an account? <Link to="/login">Login here</Link></p>
+        </div>
+
+        <div className="debug-info">
+          <small>API URL: {process.env.REACT_APP_API_URL || 'Not set'}</small>
+        </div>
       </div>
     </div>
   );
